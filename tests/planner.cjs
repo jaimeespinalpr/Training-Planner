@@ -5,7 +5,7 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
  const types={'.html':'text/html','.js':'text/javascript','.css':'text/css','.ttf':'font/ttf'};
  const server=http.createServer((req,res)=>{const file=path.join(root,new URL(req.url,'http://localhost').pathname.replace(/^\//,'')||'index.html');try{res.setHeader('Content-Type',types[path.extname(file)]||'application/octet-stream');res.end(fs.readFileSync(file));}catch{res.statusCode=404;res.end();}});
  await new Promise(r=>server.listen(0,'127.0.0.1',r));
- const browser=await chromium.launch({executablePath:'/usr/bin/google-chrome',headless:true,args:['--no-sandbox']});
+ const browser=await chromium.launch({executablePath:'/usr/bin/google-chrome',headless:true,args:['--no-sandbox','--disable-renderer-accessibility']});
  try{
  const page=await browser.newPage({viewport:{width:390,height:844}}),errors=[],failures=[];
  page.on('pageerror',e=>errors.push(String(e)));page.on('response',r=>{if(r.status()>=400)failures.push(r.url());});
@@ -26,6 +26,7 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
  await page.locator('#nativeShare').click();const shared=await page.evaluate(()=>window.shared);assert.equal(shared.type,'application/pdf');assert.equal(shared.hasUrl,false);assert(shared.size>1000);
  await page.evaluate(()=>Object.defineProperty(navigator,'canShare',{configurable:true,value:()=>false}));const fallback=page.waitForEvent('download');await page.locator('#nativeShare').click();assert((await fallback).suggestedFilename().endsWith('.pdf'));
  const long=await page.evaluate(async()=>{const brand=JSON.parse(localStorage.getItem('tp_branding'));const p={name:'Long Training',date:'2026-09-16',minutes:90,rows:Array.from({length:60},(_,i)=>[`Actividad ${i+1}`,5,'Detalles de técnica y coordinación. '.repeat(8)])};const f=await PlannerPDF.build(p,brand,'Wrestling practice');return Array.from(new Uint8Array(await f.arrayBuffer()));});fs.writeFileSync(path.join(out,'multipage.pdf'),Buffer.from(long));
+ await require('./sections.cjs')(page,out);
  assert.deepEqual(errors,[]);assert.deepEqual(failures,[]);
  console.log(JSON.stringify({pass:true,mobileWidths:[320,390,768,1280],logoPersistence:true,planPersistence:true,pdfDownload:true,sharePayload:shared,shareFallback:true,errors,failures,artifacts:out},null,2));
  }finally{await browser.close();server.close();}

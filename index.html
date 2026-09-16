@@ -4,7 +4,7 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#07131f"><meta name="description" content="Mobile-first wrestling training planner">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2307131f'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-family='Arial' font-size='24' font-weight='700' fill='%23c9f36b'%3ETP%3C/text%3E%3C/svg%3E">
-  <title>Training Planner</title><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="document-ui.css?v=2">
+  <title>Training Planner</title><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="document-ui.css?v=3">
 </head>
 <body>
   <header class="topbar"><div class="brand"><span class="brand-mark">TP</span><div><strong>Training Planner</strong><small id="brandClub">United Wrestling Club</small><img id="brandLogo" alt="Logo del club" hidden></div></div><button id="saveBtn" class="button primary">Save plan</button></header>
@@ -14,11 +14,13 @@
     <section class="planner-card"><div class="section-head"><div><p class="eyebrow">SESSION BUILDER</p><h2 id="trackTitle">Wrestling practice</h2></div><span id="savedState" class="status">En este dispositivo</span></div>
       <div class="meta-grid"><label>Plan name<input id="planName" value="Competition Prep — Week 1"></label><label>Date<input id="planDate" type="date"></label><label>Total minutes<input id="totalMinutes" type="number" min="0" value="90"></label></div>
       <div class="progress-line"><span id="timeLabel">0 / 90 min</span><div><i id="timeBar"></i></div></div>
-      <div id="rows" class="rows"></div><button id="addRow" class="add-row">＋ Add activity</button>
+      <p class="library-hint">Escribe ejercicios o puntos dentro de cada sección. Se guardan automáticamente en su categoría, en este navegador.</p><button id="openLibrary" class="button ghost" type="button">Biblioteca de ejercicios por categoría</button><div id="rows" class="rows"></div><button id="addRow" class="add-row">＋ Add activity</button>
       <div class="actions"><button id="customizeBtn" class="button ghost">Personalizar / Customize</button><button id="pdfBtn" class="button secondary">Guardar PDF</button><button id="shareBtn" class="button ghost">Compartir PDF</button></div>
     </section>
     <section class="bottom-grid"><article class="mini-card"><p class="eyebrow">SAVED PLANS</p><h3>Recent templates</h3><div id="templates" class="template-list"></div></article><article class="mini-card accent-card"><p class="eyebrow">COACH NOTE</p><h3>Keep it actionable.</h3><p>Use short activities, clear time blocks, and one coaching cue per section.</p><button id="newBtn" class="text-button">Start a fresh plan →</button></article></section>
   </main>
+  <dialog id="sectionDialog" aria-labelledby="sectionTitle"><form id="sectionForm"><h2 id="sectionTitle">Agregar sección</h2><label>Nombre de la categoría<input id="sectionName" maxlength="80" required placeholder="Por ejemplo: Introducción"></label><div class="actions"><button id="cancelSection" class="button ghost" type="button">Cancelar</button><button class="button secondary" type="submit">Agregar sección</button></div></form></dialog>
+  <dialog id="libraryDialog" aria-labelledby="libraryTitle"><h2 id="libraryTitle">Biblioteca de ejercicios</h2><p>Selecciona una categoría para reutilizar sus ejercicios. La biblioteca se guarda en este navegador.</p><label>Categoría<select id="libraryCategory"></select></label><label>Buscar ejercicio<input id="librarySearch" type="search" placeholder="Nombre o detalles"></label><div id="libraryItems"></div><button id="closeLibrary" class="button ghost" type="button">Cerrar biblioteca</button></dialog>
   <dialog id="customDialog" aria-labelledby="customTitle">
     <form id="customForm">
       <h2 id="customTitle">Personalizar / Customize</h2>
@@ -41,5 +43,5 @@
     <p>En móviles compatibles puedes elegir WhatsApp, correo o Archivos. Si tu navegador no permite compartir archivos, se descarga el PDF.</p>
   </dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="vendor/jspdf.umd.min.js"></script><script src="vendor/jspdf.plugin.autotable.min.js"></script><script src="pdf-export.js?v=2"></script><script src="app.js?v=2"></script>
+  <script src="vendor/jspdf.umd.min.js"></script><script src="vendor/jspdf.plugin.autotable.min.js"></script><script src="pdf-export.js?v=3"></script><script src="sections.js?v=3"></script><script src="app.js?v=3"></script>
 </body></html>

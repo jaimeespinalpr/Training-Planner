@@ -22,13 +22,20 @@
       doc.setFontSize(16);doc.setTextColor(accent);doc.text(title,40,49);
       doc.setFontSize(11);doc.setTextColor('#25352e');doc.text(club,40,49+title.length*19);
       doc.setFontSize(10);doc.text(`${plan.date}   |   ${trackTitle}`,40,top-36);
-      doc.text(`Total: ${plan.minutes} min`,40,top-21);
+      doc.text(`Duración prevista: ${plan.minutes} min  |  Ejercicios: ${plan.rows.reduce((n,r)=>n+Number(r[1]),0)} min`,40,top-21);
       if(brand.logo){const image=doc.getImageProperties(brand.logo);const ratio=Math.min(62/image.width,62/image.height);doc.addImage(brand.logo,'PNG',510,37,image.width*ratio,image.height*ratio,'club-logo','FAST');}
     };
+    const body=[];
+    const categories=[...new Set([...(plan.categories||[]),...plan.rows.map(r=>r[3]||'Actividades')])];
+    for(const category of categories){
+      const rows=plan.rows.filter(r=>(r[3]||'Actividades')===category);if(!rows.length)continue;
+      body.push([{content:`${category} · ${rows.reduce((n,r)=>n+Number(r[1]),0)} min`,colSpan:2,styles:{fillColor:'#e5f0e9',textColor:accent,fontSize:12,cellPadding:8}}]);
+      rows.forEach(r=>body.push([`${r[0]}${r[2]?'\n'+r[2]:''}`,`${r[1]} min`]));
+    }
     doc.autoTable({
       startY:top,margin:{top,left:margin,right:margin,bottom:footerHeight+15},
       head:[['ACTIVITY / ACTIVIDAD','TIME / TIEMPO']],
-      body:plan.rows.length?plan.rows.map(r=>[`${r[0]}${r[2]?'\n'+r[2]:''}`,`${r[1]} min`]):[['Sin actividades','—']],
+      body:body.length?body:[['Sin actividades','—']],
       theme:'grid',styles:{font:'Planner',fontStyle:'normal',fontSize:11,cellPadding:10,lineColor:accent,lineWidth:0.35,overflow:'linebreak',textColor:'#25352e'},
       headStyles:{fillColor:accent,textColor:'#ffffff',fontStyle:'normal'},
       columnStyles:{0:{cellWidth:446},1:{cellWidth:106,halign:'center'}},

@@ -13,7 +13,7 @@
   const toast = msg => {clearTimeout(toastTimer);$('toast').textContent=msg;$('toast').classList.add('show');toastTimer=setTimeout(()=>$('toast').classList.remove('show'),4500);};
   const persist = (key,value) => {try{localStorage.setItem(key,JSON.stringify(value));return true;}catch{toast('No se pudo guardar en este navegador. Descarga el PDF para conservar el plan.');return false;}};
   const fresh = track => ({track,name:tracks[track].name,date:today(),minutes:90,rows:clone(tracks[track].rows).map(r=>[...r,''])});
-  const normalize = p => {const t=tracks[p?.track]?p.track:'wrestling';return {...fresh(t),...p,track:t,date:p?.date||today(),rows:Array.isArray(p?.rows)?p.rows.map(r=>[String(r[0]||''),Math.max(0,Number(r[1])||0),String(r[2]||'')]):fresh(t).rows};};
+  const normalize = p => {const t=tracks[p?.track]?p.track:'wrestling';return PlannerSections.normalize({...fresh(t),...p,track:t,date:p?.date||today(),rows:Array.isArray(p?.rows)?p.rows:fresh(t).rows});};
   let state=normalize(read('tp_draft',fresh('wrestling')));
   let drafts=read('tp_tracks',{});
   let settings={club:'United Wrestling Club',coach:'',season:'',footer:'',color:'#0d6b4a',logo:'',...read('tp_branding',{})};
@@ -23,21 +23,21 @@
     $('trackTitle').textContent=tracks[state.track].title;
     document.querySelectorAll('.track').forEach(b=>b.classList.toggle('active',b.dataset.track===state.track));
     $('planName').value=state.name;$('planDate').value=state.date;$('totalMinutes').value=state.minutes;
-    $('rows').innerHTML=state.rows.map((r,i)=>`<div class="row"><label>Activity<input data-i="${i}" data-k="0" maxlength="180" value="${escapeHtml(r[0])}"></label><label>Min<input type="number" min="0" max="1440" data-i="${i}" data-k="1" value="${r[1]}"></label><button class="remove" data-remove="${i}" aria-label="Remove activity">×</button><label class="activity-notes">Notes / Detalles<textarea data-i="${i}" data-k="2" maxlength="5000" rows="2" placeholder="Exercises, coaching cues, repetitions…">${escapeHtml(r[2])}</textarea></label></div>`).join('');
-    updateProgress();renderTemplates();renderBrand();
+    sections.rememberAll();
+    sections.renderRows();updateProgress();renderTemplates();renderBrand();
   }
   function renderBrand(){ $('brandClub').textContent=settings.club||'Training Planner';$('brandLogo').hidden=!settings.logo;if(settings.logo)$('brandLogo').src=settings.logo; }
-  function updateProgress(){const used=state.rows.reduce((n,r)=>n+Number(r[1]),0);$('timeLabel').textContent=`${used} / ${state.minutes} min`;$('timeBar').style.width=`${state.minutes?Math.min(100,used/state.minutes*100):0}%`;}
+  function updateProgress(){sections.updateSummary();const used=state.rows.reduce((n,r)=>n+Number(r[1]),0);$('timeLabel').textContent=`${used} / ${state.minutes} min`;$('timeBar').style.width=`${state.minutes?Math.min(100,used/state.minutes*100):0}%`;}
   function collect(){state.name=$('planName').value.trim()||'Daily Training';state.date=$('planDate').value||today();state.minutes=Math.max(0,Number($('totalMinutes').value)||0);return clone(state);}
   function cache(){collect();drafts[state.track]=clone(state);persist('tp_tracks',drafts);persist('tp_draft',state);$('savedState').textContent='En este dispositivo';}
   function save(){collect();const list=read('tp_templates',[]);const next=[clone(state),...list.filter(x=>!(x.name===state.name&&x.track===state.track&&x.date===state.date))].slice(0,100);if(persist('tp_templates',next)){cache();renderTemplates();toast('Plan guardado en este dispositivo');}}
   function renderTemplates(){const list=read('tp_templates',[]);$('templates').innerHTML=list.length?list.map((p,i)=>`<div class="template"><span>${escapeHtml(p.name)}<small>${escapeHtml(p.date||'')} · ${escapeHtml(p.track||'wrestling')}</small></span><button data-load="${i}">Open</button></div>`).join(''):'<p>Los planes guardados aparecerán aquí.</p>';}
-  $('rows').addEventListener('input',e=>{if(e.target.dataset.i===undefined)return;const k=Number(e.target.dataset.k);state.rows[Number(e.target.dataset.i)][k]=k===1?Math.max(0,Number(e.target.value)||0):e.target.value;updateProgress();cache();});
+  $('rows').addEventListener('input',e=>{if(e.target.dataset.i===undefined)return;const k=Number(e.target.dataset.k);state.rows[Number(e.target.dataset.i)][k]=k===1?Math.max(0,Number(e.target.value)||0):e.target.value;sections.remember(state.rows[Number(e.target.dataset.i)]);updateProgress();cache();});
   $('rows').addEventListener('click',e=>{if(e.target.dataset.remove!==undefined){state.rows.splice(Number(e.target.dataset.remove),1);cache();render();}});
   document.querySelectorAll('.track').forEach(b=>b.onclick=()=>{cache();state=normalize(drafts[b.dataset.track]||fresh(b.dataset.track));render();cache();});
-  $('addRow').onclick=()=>{state.rows.push(['',10,'']);render();cache();$('rows').lastElementChild.querySelector('input').focus();};
+  // Section controls are bound by PlannerSections.
   $('saveBtn').onclick=save;
-  $('newBtn').onclick=()=>{state=fresh(state.track);state.name='New training plan';state.rows=[['Warm-up',10,'']];render();cache();};
+  $('newBtn').onclick=()=>{state=normalize({...fresh(state.track),rows:[]});state.name='Nuevo entrenamiento';render();cache();};
   $('templates').onclick=e=>{if(e.target.dataset.load!==undefined){cache();state=normalize(read('tp_templates',[])[Number(e.target.dataset.load)]);render();cache();toast('Plan abierto');}};
   ['planName','planDate','totalMinutes'].forEach(id=>$(id).addEventListener('input',()=>{cache();updateProgress();}));
   function logoPreview(){ $('logoPreview').hidden=!pendingLogo;if(pendingLogo)$('logoPreview').src=pendingLogo; }
@@ -74,5 +74,6 @@
       catch(e){if(e.name==='AbortError')return;$('pdfStatus').textContent='El dispositivo no pudo compartirlo. Usa Descargar PDF.';}
     }else{download();$('pdfStatus').textContent='Este navegador no permite compartir archivos directamente. Adjunta el PDF descargado en tu aplicación.';}
   };
-  window.TP={save,tracks};render();
+  const sections=PlannerSections.attach({getState:()=>state,cache,render,toast,read,persist});
+  window.TP={save,tracks};sections.rememberAll();render();cache();
 })();
