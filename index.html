@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#07131f"><meta name="description" content="Mobile-first wrestling training planner">
+  <title>Training Planner</title><link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar"><div class="brand"><span class="brand-mark">TP</span><div><strong>Training Planner</strong><small>United Wrestling Lab</small></div></div><button id="saveBtn" class="button primary">Save plan</button></header>
+  <main class="shell">
+    <section class="hero"><div><p class="eyebrow">BUILD. ASSIGN. EXECUTE.</p><h1>Plan the work.<br><em>Win the match.</em></h1><p class="hero-copy">A focused training workspace for wrestling coaches, built for the phone first.</p></div><div class="hero-badge">NEW<br><strong>01</strong></div></section>
+    <nav class="track-tabs" aria-label="Training tracks"><button class="track active" data-track="wrestling">Wrestling</button><button class="track" data-track="lifting">Lifting</button><button class="track" data-track="mental">Mind &amp; Focus</button></nav>
+    <section class="planner-card"><div class="section-head"><div><p class="eyebrow">SESSION BUILDER</p><h2 id="trackTitle">Wrestling practice</h2></div><span id="savedState" class="status">Local draft</span></div>
+      <div class="meta-grid"><label>Plan name<input id="planName" value="Competition Prep — Week 1"></label><label>Date<input id="planDate" type="date"></label><label>Total minutes<input id="totalMinutes" type="number" min="0" value="90"></label></div>
+      <div class="progress-line"><span id="timeLabel">0 / 90 min</span><div><i id="timeBar"></i></div></div>
+      <div id="rows" class="rows"></div><button id="addRow" class="add-row">＋ Add activity</button>
+      <div class="actions"><button id="assignBtn" class="button secondary">Assign to athletes</button><button id="shareBtn" class="button ghost">Share</button></div>
+    </section>
+    <section class="bottom-grid"><article class="mini-card"><p class="eyebrow">SAVED PLANS</p><h3>Recent templates</h3><div id="templates" class="template-list"></div></article><article class="mini-card accent-card"><p class="eyebrow">COACH NOTE</p><h3>Keep it actionable.</h3><p>Use short activities, clear time blocks, and one coaching cue per section.</p><button id="newBtn" class="text-button">Start a fresh plan →</button></article></section>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="firebase-config.public.js"></script><script src="app.js"></script>
+</body></html>
