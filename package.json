@@ -1,0 +1,1 @@
+{"name":"training-planner","private":true,"version":"1.1.0","scripts":{"test":"node tests/planner.cjs"},"dependencies":{"jspdf":"4.2.1","jspdf-autotable":"5.0.8"},"devDependencies":{"playwright":"1.56.1"}}

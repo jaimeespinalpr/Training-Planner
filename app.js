@@ -1,18 +1,78 @@
 (() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
   const tracks = {
-    wrestling:{title:'Wrestling practice',name:'Competition Prep — Week 1',rows:[['Warm-up + movement','15'],['Technique: single-leg chain','25'],['Live goes: score first','30'],['Cool down + review','20']]},
-    lifting:{title:'Lifting & conditioning',name:'Strength Cycle — Day 1',rows:[['Dynamic warm-up','10'],['Lower-body strength','30'],['Power + med ball','20'],['Mobility / recovery','15']]},
-    mental:{title:'Mind & focus session',name:'Competition Mindset — Day 1',rows:[['Breathing reset','5'],['Visualization: first score','10'],['Decision game','20'],['Journal + cue words','10']]}
+    wrestling:{title:'Wrestling practice',name:'Competition Prep',rows:[['Warm-up + movement',15],['Technique: single-leg chain',25],['Live goes: score first',30],['Cool down + review',20]]},
+    lifting:{title:'Lifting & conditioning',name:'Strength Cycle',rows:[['Dynamic warm-up',10],['Lower-body strength',30],['Power + med ball',20],['Mobility / recovery',15]]},
+    mental:{title:'Mind & focus session',name:'Competition Mindset',rows:[['Breathing reset',5],['Visualization: first score',10],['Decision game',20],['Journal + cue words',10]]}
   };
-  let track='wrestling'; let state=JSON.parse(localStorage.getItem('tp_draft')||'null')||{name:tracks.wrestling.name,date:'',minutes:90,rows:tracks.wrestling.rows};
-  const $=id=>document.getElementById(id); const toast=m=>{const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800)};
-  function render(){const cfg=tracks[track];$('trackTitle').textContent=cfg.title;$('planName').value=state.name;$('planDate').value=state.date;$('totalMinutes').value=state.minutes;$('rows').innerHTML=state.rows.map((r,i)=>`<div class="row"><label>Activity<input data-i="${i}" data-k="0" value="${escapeHtml(r[0])}"></label><label>Min<input type="number" min="0" data-i="${i}" data-k="1" value="${escapeHtml(r[1])}"></label><button class="remove" data-remove="${i}" aria-label="Remove activity">×</button></div>`).join(''); updateProgress(); renderTemplates()}
+  const today = () => {const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
+  const read = (key,fallback) => {try{return JSON.parse(localStorage.getItem(key)) ?? fallback;}catch{return fallback;}};
+  const clone = x => JSON.parse(JSON.stringify(x));
+  let toastTimer;
+  const toast = msg => {clearTimeout(toastTimer);$('toast').textContent=msg;$('toast').classList.add('show');toastTimer=setTimeout(()=>$('toast').classList.remove('show'),4500);};
+  const persist = (key,value) => {try{localStorage.setItem(key,JSON.stringify(value));return true;}catch{toast('No se pudo guardar en este navegador. Descarga el PDF para conservar el plan.');return false;}};
+  const fresh = track => ({track,name:tracks[track].name,date:today(),minutes:90,rows:clone(tracks[track].rows).map(r=>[...r,''])});
+  const normalize = p => {const t=tracks[p?.track]?p.track:'wrestling';return {...fresh(t),...p,track:t,date:p?.date||today(),rows:Array.isArray(p?.rows)?p.rows.map(r=>[String(r[0]||''),Math.max(0,Number(r[1])||0),String(r[2]||'')]):fresh(t).rows};};
+  let state=normalize(read('tp_draft',fresh('wrestling')));
+  let drafts=read('tp_tracks',{});
+  let settings={club:'United Wrestling Club',coach:'',season:'',footer:'',color:'#0d6b4a',logo:'',...read('tp_branding',{})};
+  let pendingLogo='';
   const escapeHtml=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
-  function updateProgress(){const used=state.rows.reduce((n,r)=>n+(Number(r[1])||0),0), total=Number(state.minutes)||0;$('timeLabel').textContent=`${used} / ${total} min`;$('timeBar').style.width=`${total?Math.min(100,used/total*100):0}%`}
-  function save(){state={name:$('planName').value.trim()||'Untitled plan',date:$('planDate').value,minutes:Number($('totalMinutes').value)||0,rows:state.rows};localStorage.setItem('tp_draft',JSON.stringify(state));const list=JSON.parse(localStorage.getItem('tp_templates')||'[]');localStorage.setItem('tp_templates',JSON.stringify([state,...list.filter(x=>x.name!==state.name)].slice(0,8)));$('savedState').textContent='Saved locally';renderTemplates();toast('Plan saved')}
-  function renderTemplates(){const list=JSON.parse(localStorage.getItem('tp_templates')||'[]');$('templates').innerHTML=list.length?list.slice(0,4).map((x,i)=>`<div class="template"><span>${escapeHtml(x.name)}</span><button data-load="${i}">Open</button></div>`).join(''):'<p class="small">Your saved plans will appear here.</p>';window._templates=list}
-  $('rows').addEventListener('input',e=>{const i=e.target.dataset.i;if(i===undefined)return;state.rows[i][e.target.dataset.k]=e.target.value;updateProgress()});$('rows').addEventListener('click',e=>{const i=e.target.dataset.remove;if(i!==undefined){state.rows.splice(Number(i),1);render()}});
-  document.querySelectorAll('.track').forEach(b=>b.addEventListener('click',()=>{track=b.dataset.track;document.querySelectorAll('.track').forEach(x=>x.classList.toggle('active',x===b));state={...state,name:tracks[track].name,rows:tracks[track].rows.map(x=>[...x])};render()}));
-  $('addRow').onclick=()=>{state.rows.push(['New activity','10']);render();$('rows input').focus()};$('saveBtn').onclick=save;$('assignBtn').onclick=()=>toast('Assignment flow ready for Firebase connection');$('shareBtn').onclick=async()=>{try{await navigator.clipboard.writeText(location.href);toast('Planner link copied')}catch{toast('Copy unavailable on this device')}};$('newBtn').onclick=()=>{state={...state,name:'New training plan',rows:[['Warm-up','10']]};render()};$('templates').onclick=e=>{const i=e.target.dataset.load;if(i!==undefined){state=JSON.parse(JSON.stringify(window._templates[i]));render();toast('Template opened')}};['planName','planDate','totalMinutes'].forEach(id=>$(id).addEventListener('input',()=>{if(id==='planName')state.name=$(id).value;if(id==='planDate')state.date=$(id).value;if(id==='totalMinutes')state.minutes=Number($(id).value)||0;updateProgress()}));
-  window.TP={save,tracks}; render();
+  function render(){
+    $('trackTitle').textContent=tracks[state.track].title;
+    document.querySelectorAll('.track').forEach(b=>b.classList.toggle('active',b.dataset.track===state.track));
+    $('planName').value=state.name;$('planDate').value=state.date;$('totalMinutes').value=state.minutes;
+    $('rows').innerHTML=state.rows.map((r,i)=>`<div class="row"><label>Activity<input data-i="${i}" data-k="0" maxlength="180" value="${escapeHtml(r[0])}"></label><label>Min<input type="number" min="0" max="1440" data-i="${i}" data-k="1" value="${r[1]}"></label><button class="remove" data-remove="${i}" aria-label="Remove activity">×</button><label class="activity-notes">Notes / Detalles<textarea data-i="${i}" data-k="2" maxlength="5000" rows="2" placeholder="Exercises, coaching cues, repetitions…">${escapeHtml(r[2])}</textarea></label></div>`).join('');
+    updateProgress();renderTemplates();renderBrand();
+  }
+  function renderBrand(){ $('brandClub').textContent=settings.club||'Training Planner';$('brandLogo').hidden=!settings.logo;if(settings.logo)$('brandLogo').src=settings.logo; }
+  function updateProgress(){const used=state.rows.reduce((n,r)=>n+Number(r[1]),0);$('timeLabel').textContent=`${used} / ${state.minutes} min`;$('timeBar').style.width=`${state.minutes?Math.min(100,used/state.minutes*100):0}%`;}
+  function collect(){state.name=$('planName').value.trim()||'Daily Training';state.date=$('planDate').value||today();state.minutes=Math.max(0,Number($('totalMinutes').value)||0);return clone(state);}
+  function cache(){collect();drafts[state.track]=clone(state);persist('tp_tracks',drafts);persist('tp_draft',state);$('savedState').textContent='En este dispositivo';}
+  function save(){collect();const list=read('tp_templates',[]);const next=[clone(state),...list.filter(x=>!(x.name===state.name&&x.track===state.track&&x.date===state.date))].slice(0,100);if(persist('tp_templates',next)){cache();renderTemplates();toast('Plan guardado en este dispositivo');}}
+  function renderTemplates(){const list=read('tp_templates',[]);$('templates').innerHTML=list.length?list.map((p,i)=>`<div class="template"><span>${escapeHtml(p.name)}<small>${escapeHtml(p.date||'')} · ${escapeHtml(p.track||'wrestling')}</small></span><button data-load="${i}">Open</button></div>`).join(''):'<p>Los planes guardados aparecerán aquí.</p>';}
+  $('rows').addEventListener('input',e=>{if(e.target.dataset.i===undefined)return;const k=Number(e.target.dataset.k);state.rows[Number(e.target.dataset.i)][k]=k===1?Math.max(0,Number(e.target.value)||0):e.target.value;updateProgress();cache();});
+  $('rows').addEventListener('click',e=>{if(e.target.dataset.remove!==undefined){state.rows.splice(Number(e.target.dataset.remove),1);cache();render();}});
+  document.querySelectorAll('.track').forEach(b=>b.onclick=()=>{cache();state=normalize(drafts[b.dataset.track]||fresh(b.dataset.track));render();cache();});
+  $('addRow').onclick=()=>{state.rows.push(['',10,'']);render();cache();$('rows').lastElementChild.querySelector('input').focus();};
+  $('saveBtn').onclick=save;
+  $('newBtn').onclick=()=>{state=fresh(state.track);state.name='New training plan';state.rows=[['Warm-up',10,'']];render();cache();};
+  $('templates').onclick=e=>{if(e.target.dataset.load!==undefined){cache();state=normalize(read('tp_templates',[])[Number(e.target.dataset.load)]);render();cache();toast('Plan abierto');}};
+  ['planName','planDate','totalMinutes'].forEach(id=>$(id).addEventListener('input',()=>{cache();updateProgress();}));
+  function logoPreview(){ $('logoPreview').hidden=!pendingLogo;if(pendingLogo)$('logoPreview').src=pendingLogo; }
+  $('customizeBtn').onclick=()=>{for(const key of ['club','coach','season','footer','color'])$('custom-'+key).value=settings[key];pendingLogo=settings.logo;$('logoFile').value='';logoPreview();$('customDialog').showModal();};
+  $('cancelCustom').onclick=()=>$('customDialog').close();
+  $('removeLogo').onclick=()=>{pendingLogo='';$('logoFile').value='';logoPreview();};
+  let logoJob=0;
+  $('logoFile').onchange=async()=>{
+    const file=$('logoFile').files[0];if(!file)return;
+    const job=++logoJob;
+    if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>10*1024*1024){toast('Selecciona PNG, JPG o WebP de hasta 10 MB.');return;}
+    $('saveCustom').disabled=true;
+    const url=URL.createObjectURL(file);
+    try{const img=new Image();img.src=url;await img.decode();const scale=Math.min(1,640/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.max(1,Math.round(img.width*scale));c.height=Math.max(1,Math.round(img.height*scale));c.getContext('2d').drawImage(img,0,0,c.width,c.height);if(job===logoJob){pendingLogo=c.toDataURL('image/png');logoPreview();}}
+    catch{toast('No se pudo abrir esa imagen. Intenta con PNG o JPG.');}
+    finally{URL.revokeObjectURL(url);$('saveCustom').disabled=false;}
+  };
+  $('customForm').onsubmit=e=>{e.preventDefault();const next={logo:pendingLogo};for(const key of ['club','coach','season','footer','color'])next[key]=$('custom-'+key).value.trim();if(persist('tp_branding',next)){settings=next;renderBrand();$('customDialog').close();toast('Personalización guardada');}};
+  let prepared=null,previewUrl=null;
+  $('pdfBtn').onclick=() => openPdf(false);
+  $('shareBtn').onclick=() => openPdf(true);
+  async function openPdf(sharing){
+    collect();cache();$('pdfDialog').showModal();$('pdfStatus').textContent='Preparando el PDF…';$('downloadPdf').disabled=true;$('nativeShare').disabled=true;
+    try{prepared=await window.PlannerPDF.build(clone(state),clone(settings),tracks[state.track].title);if(previewUrl)URL.revokeObjectURL(previewUrl);previewUrl=URL.createObjectURL(prepared);$('pdfPreviewLink').href=previewUrl;$('pdfPreviewLink').hidden=false;$('pdfStatus').textContent=`${prepared.name} — Logo, fecha, actividades y pie de página incluidos.`;$('downloadPdf').disabled=false;$('nativeShare').disabled=false;if(sharing)$('nativeShare').focus();}
+    catch(err){prepared=null;$('pdfStatus').textContent='No se pudo generar el PDF. Recarga la página e inténtalo otra vez.';console.error(err);}
+  }
+  $('closePdf').onclick=()=>$('pdfDialog').close();
+  function download(){if(!prepared)return;const a=document.createElement('a');a.href=previewUrl;a.download=prepared.name;document.body.append(a);a.click();a.remove();}
+  $('downloadPdf').onclick=download;
+  $('nativeShare').onclick=async()=>{
+    if(!prepared)return;
+    if(navigator.share&&navigator.canShare?.({files:[prepared]})){
+      try{await navigator.share({files:[prepared],title:state.name});$('pdfStatus').textContent='PDF enviado a la aplicación seleccionada.';}
+      catch(e){if(e.name==='AbortError')return;$('pdfStatus').textContent='El dispositivo no pudo compartirlo. Usa Descargar PDF.';}
+    }else{download();$('pdfStatus').textContent='Este navegador no permite compartir archivos directamente. Adjunta el PDF descargado en tu aplicación.';}
+  };
+  window.TP={save,tracks};render();
 })();

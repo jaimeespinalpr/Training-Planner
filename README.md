@@ -1,39 +1,32 @@
 # Training Planner
 
-Mobile-first training-plan workspace extracted from Wrestling Performance Lab and redesigned with a fresh visual system.
+Aplicación oficial de planificación de entrenamientos de United Wrestling Club, con mejoras continuas.
 
-## Current version
+**Aplicación:** https://jaimeespinalpr.github.io/Training-Planner/
 
-This first version is a working static planner with three tracks:
+## Uso
 
-- Wrestling practice
-- Lifting & conditioning
-- Mind & focus
+- Selecciona Wrestling, Lifting o Mind & Focus.
+- Edita el nombre, la fecha, las actividades, sus minutos y sus notas.
+- **Save plan** guarda el entrenamiento en este navegador; **Open** recupera un plan guardado.
+- **Personalizar / Customize** permite subir o quitar un logo PNG/JPG/WebP, indicar club, entrenador, temporada, mensaje del pie y color del documento. La imagen se normaliza a PNG con dimensión máxima de 640 px y se guarda en este dispositivo.
+- **Guardar PDF** prepara un archivo PDF de la fecha y área seleccionadas. Descárgalo o ábrelo antes de compartirlo.
+- **Compartir PDF** prepara ese mismo documento. Pulsa **Compartir archivo PDF** para elegir una aplicación en el menú nativo del móvil. Si Web Share de archivos no está disponible, se descarga el PDF para adjuntarlo manualmente.
 
-It supports editable activities, time totals, progress, local drafts, saved-template UI, sharing, and responsive mobile layouts.
+## Documento
 
-## Firebase connection
+Formato carta, encabezado con logo, nombre del plan, club, fecha y duración; tabla Actividad/Tiempo con detalles; pie con entrenador, temporada y mensaje. Las tablas largas continúan en nuevas páginas con encabezado, logo y numeración. Recupera esa estructura del planner de WPL; no es una copia pixel a pixel de sus estilos. La fuente incluida admite español sin perder acentos. El PDF se genera en el dispositivo, sin enviar planes ni logos a servicios externos.
 
-`firebase-config.example.js` documents the public web configuration required for a connected deployment. Firebase web configuration is not a service secret. Keep service keys and API secrets out of the repository.
+## Almacenamiento y conexiones
 
-The included `firestore.rules` is a starting contract for `training_plans`, `training_templates`, and user documents. Before production, add Firebase Authentication and server-validated custom claims for coach roles. Do not rely on localStorage for authorization.
+Actualmente los planes y la personalización se guardan en localStorage, no en Firebase. Borrar los datos del navegador elimina ese almacenamiento; conserva una copia PDF de tus planes. La sincronización entre dispositivos y las asignaciones autenticadas no están activadas. Los archivos Firebase del repositorio son material para una futura integración, no conexiones operativas ni reglas desplegadas.
 
-## Run locally
+## Desarrollo y validación
 
-```bash
-python3 -m http.server 4173
-```
+Sirve la raíz con `python3 -m http.server 4173 --bind 127.0.0.1`.
 
-Open `http://127.0.0.1:4173/`.
+`npm ci --ignore-scripts` instala las dependencias bloqueadas. `npm test` ejecuta verificaciones de UI, persistencia, exportación y contrato de Web Share en Chrome headless. El menú nativo de iOS/Android requiere validación en un dispositivo real; la verificación automatizada sustituye esa API para inspeccionar el archivo entregado. El script actual usa `/usr/bin/google-chrome` y el logo de club incluido en `tests/fixtures/`.
 
-## Deployment
+## Publicación
 
-This repository is designed for GitHub Pages. The workflow in `.github/workflows/pages.yml` deploys `main` automatically.
-
-## Roadmap
-
-1. Connect Firebase Auth and Firestore.
-2. Add coach/athlete assignment flow.
-3. Add cloud templates and realtime updates.
-4. Add calendar integration and notifications.
-5. Add tests for role permissions and mobile UI.
+GitHub Actions publica los archivos de aplicación y `vendor/`, no dependencias de desarrollo ni archivos Firebase. Bibliotecas jsPDF y AutoTable fijadas mediante package-lock; copias de navegador y licencias en `vendor/`. Al actualizar dependencias, regenerar las copias de vendor y ejecutar las verificaciones. Fuente DejaVu Sans con licencia incluida.
