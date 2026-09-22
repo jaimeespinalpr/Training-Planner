@@ -7,41 +7,41 @@
   <title>Training Planner</title><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="document-ui.css?v=3">
 </head>
 <body>
-  <header class="topbar"><div class="brand"><span class="brand-mark">TP</span><div><strong>Training Planner</strong><small id="brandClub">United Wrestling Club</small><img id="brandLogo" alt="Logo del club" hidden></div></div><button id="saveBtn" class="button primary">Save plan</button></header>
+  <header class="topbar"><div class="brand"><span class="brand-mark">TP</span><div><strong>Training Planner</strong><small id="brandClub">United Wrestling Club</small><img id="brandLogo" alt="Club logo" hidden></div></div><button id="saveBtn" class="button primary">Save plan</button></header>
   <main class="shell">
     <section class="hero"><div><p class="eyebrow">BUILD. ASSIGN. EXECUTE.</p><h1>Plan the work.<br><em>Win the match.</em></h1><p class="hero-copy">A focused training workspace for wrestling coaches, built for the phone first.</p></div></section>
     <nav class="track-tabs" aria-label="Training tracks"><button class="track active" data-track="wrestling">Wrestling</button><button class="track" data-track="lifting">Lifting</button><button class="track" data-track="mental">Mind &amp; Focus</button></nav>
-    <section class="planner-card"><div class="section-head"><div><p class="eyebrow">SESSION BUILDER</p><h2 id="trackTitle">Wrestling practice</h2></div><span id="savedState" class="status">En este dispositivo</span></div>
+    <section class="planner-card"><div class="section-head"><div><p class="eyebrow">SESSION BUILDER</p><h2 id="trackTitle">Wrestling practice</h2></div><span id="savedState" class="status">Saved on this device</span></div>
       <div class="meta-grid"><label>Plan name<input id="planName" value="Competition Prep — Week 1"></label><label>Date<input id="planDate" type="date"></label><label>Total minutes<input id="totalMinutes" type="number" min="0" value="90"></label></div>
       <div class="progress-line"><span id="timeLabel">0 / 90 min</span><div><i id="timeBar"></i></div></div>
-      <p class="library-hint">Escribe ejercicios o puntos dentro de cada sección. Se guardan automáticamente en su categoría, en este navegador.</p><button id="openLibrary" class="button ghost" type="button">Biblioteca de ejercicios por categoría</button><div id="rows" class="rows"></div><button id="addRow" class="add-row">＋ Add activity</button>
-      <div class="actions"><button id="customizeBtn" class="button ghost">Personalizar / Customize</button><button id="pdfBtn" class="button secondary">Guardar PDF</button><button id="shareBtn" class="button ghost">Compartir PDF</button></div>
+      <p class="library-hint">Add exercises or coaching points to each section. They are saved automatically to that category in this browser.</p><button id="openLibrary" class="button ghost" type="button">Exercise library by category</button><div id="rows" class="rows"></div><button id="addRow" class="add-row">＋ Add activity</button>
+      <div class="actions"><button id="customizeBtn" class="button ghost">Customize</button><button id="pdfBtn" class="button secondary">Save PDF</button><button id="shareBtn" class="button ghost">Share PDF</button></div>
     </section>
     <section class="bottom-grid"><article class="mini-card"><p class="eyebrow">SAVED PLANS</p><h3>Recent templates</h3><div id="templates" class="template-list"></div></article><article class="mini-card accent-card"><p class="eyebrow">COACH NOTE</p><h3>Keep it actionable.</h3><p>Use short activities, clear time blocks, and one coaching cue per section.</p><button id="newBtn" class="text-button">Start a fresh plan →</button></article></section>
   </main>
-  <dialog id="sectionDialog" aria-labelledby="sectionTitle"><form id="sectionForm"><h2 id="sectionTitle">Agregar sección</h2><label>Nombre de la categoría<input id="sectionName" maxlength="80" required placeholder="Por ejemplo: Introducción"></label><div class="actions"><button id="cancelSection" class="button ghost" type="button">Cancelar</button><button class="button secondary" type="submit">Agregar sección</button></div></form></dialog>
-  <dialog id="libraryDialog" aria-labelledby="libraryTitle"><h2 id="libraryTitle">Biblioteca de ejercicios</h2><p>Selecciona una categoría para reutilizar sus ejercicios. La biblioteca se guarda en este navegador.</p><label>Categoría<select id="libraryCategory"></select></label><label>Buscar ejercicio<input id="librarySearch" type="search" placeholder="Nombre o detalles"></label><div id="libraryItems"></div><button id="closeLibrary" class="button ghost" type="button">Cerrar biblioteca</button></dialog>
+  <dialog id="sectionDialog" aria-labelledby="sectionTitle"><form id="sectionForm"><h2 id="sectionTitle">Add section</h2><label>Category name<input id="sectionName" maxlength="80" required placeholder="For example: Introduction"></label><div class="actions"><button id="cancelSection" class="button ghost" type="button">Cancel</button><button class="button secondary" type="submit">Add section</button></div></form></dialog>
+  <dialog id="libraryDialog" aria-labelledby="libraryTitle"><h2 id="libraryTitle">Exercise library</h2><p>Choose a category to reuse its exercises. The library is saved in this browser.</p><label>Category<select id="libraryCategory"></select></label><label>Search exercises<input id="librarySearch" type="search" placeholder="Name or details"></label><div id="libraryItems"></div><button id="closeLibrary" class="button ghost" type="button">Close library</button></dialog>
   <dialog id="customDialog" aria-labelledby="customTitle">
     <form id="customForm">
-      <h2 id="customTitle">Personalizar / Customize</h2>
-      <p>Estos datos y tu logo aparecerán en el PDF del entrenamiento.</p>
-      <label>Logo del club (PNG, JPG, WebP · hasta 10 MB)<input id="logoFile" type="file" accept="image/png,image/jpeg,image/webp"></label>
-      <img id="logoPreview" alt="Vista previa del logo" hidden>
-      <button id="removeLogo" type="button" class="button ghost">Quitar logo</button>
-      <label>Club / Escuela<input id="custom-club" maxlength="100"></label>
-      <label>Entrenador<input id="custom-coach" maxlength="80"></label>
-      <label>Temporada<input id="custom-season" maxlength="60"></label>
-      <label>Mensaje del pie de página<input id="custom-footer" maxlength="160"></label>
-      <label>Color del documento<input id="custom-color" type="color"></label>
-      <div class="actions"><button id="cancelCustom" type="button" class="button ghost">Cancelar</button><button id="saveCustom" class="button secondary" type="submit">Guardar personalización</button></div>
+      <h2 id="customTitle">Customize</h2>
+      <p>These details and your logo will appear in the training PDF.</p>
+      <label>Club logo (PNG, JPG, WebP · up to 10 MB)<input id="logoFile" type="file" accept="image/png,image/jpeg,image/webp"></label>
+      <img id="logoPreview" alt="Logo preview" hidden>
+      <button id="removeLogo" type="button" class="button ghost">Remove logo</button>
+      <label>Club / School<input id="custom-club" maxlength="100"></label>
+      <label>Coach<input id="custom-coach" maxlength="80"></label>
+      <label>Season<input id="custom-season" maxlength="60"></label>
+      <label>Footer message<input id="custom-footer" maxlength="160"></label>
+      <label>Document color<input id="custom-color" type="color"></label>
+      <div class="actions"><button id="cancelCustom" type="button" class="button ghost">Cancel</button><button id="saveCustom" class="button secondary" type="submit">Save customization</button></div>
     </form>
   </dialog>
   <dialog id="pdfDialog" aria-labelledby="pdfTitle">
-    <h2 id="pdfTitle">PDF del entrenamiento</h2><p id="pdfStatus" role="status"></p>
-    <a id="pdfPreviewLink" target="_blank" rel="noopener" hidden>Ver PDF antes de compartir</a>
-    <div class="actions"><button id="downloadPdf" class="button secondary">Descargar PDF</button><button id="nativeShare" class="button secondary">Compartir archivo PDF</button><button id="closePdf" class="button ghost">Cerrar</button></div>
-    <p>En móviles compatibles puedes elegir WhatsApp, correo o Archivos. Si tu navegador no permite compartir archivos, se descarga el PDF.</p>
+    <h2 id="pdfTitle">Training PDF</h2><p id="pdfStatus" role="status"></p>
+    <a id="pdfPreviewLink" target="_blank" rel="noopener" hidden>Preview PDF before sharing</a>
+    <div class="actions"><button id="downloadPdf" class="button secondary">Download PDF</button><button id="nativeShare" class="button secondary">Share PDF file</button><button id="closePdf" class="button ghost">Close</button></div>
+    <p>On supported phones, choose WhatsApp, email, or Files. If your browser cannot share files, the PDF will download instead.</p>
   </dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="vendor/jspdf.umd.min.js"></script><script src="vendor/jspdf.plugin.autotable.min.js"></script><script src="pdf-export.js?v=3"></script><script src="sections.js?v=3"></script><script src="app.js?v=3"></script>
+  <script src="vendor/jspdf.umd.min.js"></script><script src="vendor/jspdf.plugin.autotable.min.js"></script><script src="pdf-export.js?v=4"></script><script src="sections.js?v=4"></script><script src="app.js?v=4"></script>
 </body></html>
