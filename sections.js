@@ -1,9 +1,11 @@
 (() => {
   'use strict';
-  const defaults={wrestling:['Roll Call and Announcements','Warm-up','Introduction of New Techniques or Drills','Live Wrestling (High Pace Drills)','Strength and Skill Based Activities','Cool-down'],lifting:['Introduction','Warm-up','Strength','Power','Cool-down'],mental:['Introduction','Breathing','Visualization','Decision-making','Reflection']};
+  const defaults={wrestling:['Roll Call and Announcements','Warm-up','Introduction of New Techniques or Drills','Live Wrestling (High Pace Drills)','Strength and Skill Based Activities','Cool Down Closing and Visualization'],lifting:['Introduction','Warm-up','Strength','Power','Cool-down'],mental:['Introduction','Breathing','Visualization','Decision-making','Reflection']};
   const legacy={wrestling:['Calentamiento','Técnica','Combate','Vuelta a la calma'],lifting:['Calentamiento','Fuerza','Potencia','Vuelta a la calma'],mental:['Respiración','Visualización','Toma de decisiones','Reflexión']};
   const categoryNames={'Introducción':'Roll Call and Announcements','Introduction':'Roll Call and Announcements','Calentamiento':'Warm-up','Technique':'Introduction of New Techniques or Drills','Técnica':'Introduction of New Techniques or Drills','Live wrestling':'Live Wrestling (High Pace Drills)','Combate':'Live Wrestling (High Pace Drills)','Vuelta a la calma':'Cool-down','Fuerza':'Strength','Potencia':'Power','Respiración':'Breathing','Visualización':'Visualization','Toma de decisiones':'Decision-making','Reflexión':'Reflection','Otros':'Other'};
   const englishCategory=name=>categoryNames[name]||name;
+  const categoryForTrack=(name,track)=>track==='wrestling'&&englishCategory(name)==='Cool-down'?'Cool Down Closing and Visualization':englishCategory(name);
+  const cooldownItems=["Light jog cool down","Slow walk around the mat","Deep breathing reset","Box breathing","Breathing while lying on the mat","Controlled inhale and exhale","Full body relaxation","Neck stretch","Shoulder stretch","Triceps stretch","Chest opener stretch","Wrist and forearm stretch","Hip flexor stretch","Hamstring stretch","Quad stretch","Groin stretch","Butterfly stretch","Pigeon stretch","Child’s pose","Cobra stretch","Downward dog stretch","Low lunge stretch","Seated forward fold","Figure-four stretch","Calf stretch","Ankle mobility reset","Partner assisted stretching","Foam rolling","Light band shoulder mobility","Post-practice gratitude circle","Team huddle closing","Coach message of the day","Athlete reflection","One thing learned today","One thing to improve tomorrow","Best effort moment","Mental reset after practice","Eyes-closed breathing","Lie on the mat and visualize a full match","Visualize the first whistle","Visualize staying calm under pressure","Visualize defending the first attack","Visualize scoring the first point","Visualize finishing a single leg","Visualize finishing a double leg","Visualize finishing a high crotch","Visualize escaping a bad position","Visualize winning a scramble","Visualize scoring near the edge","Visualize controlling center mat","Visualize recovering after giving up points","Visualize winning the last exchange","Visualize wrestling with confidence","Visualize hand fighting with pressure","Visualize hitting your best move","Visualize chaining attacks","Visualize defending and re-attacking","Visualize winning in overtime","Visualize hearing the final whistle","Visualize raising your hand after victory","Visualize winning a tournament","Visualize stepping onto the podium","Visualize receiving the gold medal","Visualize representing your team with pride","Visualize staying disciplined during hard matches","Visualize walking into the arena confident","Visualize warming up before finals","Visualize beating a tough opponent","Visualize bouncing back after a mistake","Visualize executing the game plan","Visualize your coach giving instructions","Visualize your teammates supporting you","Visualize shaking hands with respect","Visualize becoming a champion","Positive self-talk repetition","Repeat: I am ready","Repeat: I stay calm","Repeat: I control my position","Repeat: I can defend and score","Repeat: I finish strong","Repeat: I trust my training","Repeat: I wrestle with purpose","Repeat: I compete with courage","Repeat: I am prepared","Repeat: I belong here"];
   const warmupItems=[
     ['Light jog',''],['High knees',''],['Butt kicks',''],['Side shuffles',''],['Carioca / grapevine',''],
     ['Backpedal',''],['Progressive short sprints',''],['Jumping jacks',''],['Seal jacks',''],['Light shadow wrestling',''],
@@ -18,16 +20,16 @@
   const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
   function normalize(plan){
     const track=defaults[plan.track]?plan.track:'wrestling';
-    const categories=Array.isArray(plan.categories)?plan.categories.filter(c=>typeof c==='string'&&c.trim()).map(englishCategory):[...defaults[track]];
+    const categories=Array.isArray(plan.categories)?plan.categories.filter(c=>typeof c==='string'&&c.trim()).map(c=>categoryForTrack(c,track)):[...defaults[track]];
     for(const category of defaults[track])if(!categories.includes(category))categories.push(category);
-    const rows=plan.rows.map((r,i)=>[String(r[0]||''),Math.max(0,Number(r[1])||0),String(r[2]||''),englishCategory(String(r[3]||legacy[track][i]||'Other')),String(r[4]||'')]).filter(r=>!(r[3]==='Warm-up'&&key(r[0])==='warm-up + movement'));
+    const rows=plan.rows.map((r,i)=>[String(r[0]||''),Math.max(0,Number(r[1])||0),String(r[2]||''),categoryForTrack(String(r[3]||legacy[track][i]||'Other'),track),String(r[4]||'')]).filter(r=>!(r[3]==='Warm-up'&&key(r[0])==='warm-up + movement'));
     for(const r of rows)if(!categories.includes(r[3]))categories.push(r[3]);
     return {...plan,schemaVersion:2,categories:[...new Set(categories)],rows};
   }
   function attach({getState,cache,render,toast,read,persist,savePlan,getSettings}){
     const $=id=>document.getElementById(id);
     let library=read('tp_exercise_library_v1',[]);if(!Array.isArray(library))library=[];
-    library=library.map(item=>({...item,category:englishCategory(item.category)}));
+    library=library.map(item=>({...item,category:categoryForTrack(item.category,item.track)}));
     const starterItems=[['Attendance Check','0',''],['Joke of the Day','0',''],['Goals','0','']];
     let seeded=false;
     for(const [name,minutes,notes] of starterItems){
@@ -61,6 +63,13 @@
       }
     }
     if(liveSeeded)persist('tp_exercise_library_v1',library);
+    let cooldownSeeded=false;
+    for(const name of cooldownItems){
+      if(!library.some(x=>x.track==='wrestling'&&x.category==='Cool Down Closing and Visualization'&&key(x.name)===key(name))){
+        library.push({id:crypto.randomUUID(),track:'wrestling',category:'Cool Down Closing and Visualization',name,minutes:0,notes:''});cooldownSeeded=true;
+      }
+    }
+    if(cooldownSeeded)persist('tp_exercise_library_v1',library);
     function warmupLibraryItems(){return library.filter(x=>x.track==='wrestling'&&key(x.category)==='warm-up').sort((a,b)=>a.name.localeCompare(b.name));}
     function warmupPanel(state,category){
       if(category!=='Warm-up'||state.track!=='wrestling')return '';
