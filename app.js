@@ -57,12 +57,16 @@
   };
   $('customForm').onsubmit=e=>{e.preventDefault();const next={...settings,logo:pendingLogo};for(const key of ['club','coach','season','footer','color'])next[key]=$('custom-'+key).value.trim();if(persist('tp_branding',next)){settings=next;renderBrand();$('customDialog').close();toast('Customization saved');}};
   let templateDraft=null;
-  function renderTemplateEditor(){
+  function openTemplateEditor(){
     templateDraft={categories:[...state.categories],categoryColors:{...(settings.categoryColors||{})},color:settings.color||'#0d6b4a',textColor:settings.textColor||'#25352e',pageSize:settings.pageSize||'letter',visualSize:settings.visualSize||'standard'};
     $('template-document-color').value=templateDraft.color;$('template-text-color').value=templateDraft.textColor;$('template-page-size').value=templateDraft.pageSize;$('template-visual-size').value=templateDraft.visualSize;
+    renderTemplateEditor();
+    $('templateDialog').showModal();
+  }
+  function renderTemplateEditor(){
     $('templateCategories').innerHTML=templateDraft.categories.map((category,i)=>`<div class="template-category" draggable="true" data-category-index="${i}" title="Drag to reorder"><span class="drag-handle" aria-hidden="true">⋮⋮</span><span>${escapeHtml(category)}</span><input type="color" value="${templateDraft.categoryColors[category]||templateDraft.color}" data-category-color aria-label="Color for ${escapeHtml(category)}"></div>`).join('');
   }
-  $('editTemplateBtn').onclick=()=>{renderTemplateEditor();$('templateDialog').showModal();};
+  $('editTemplateBtn').onclick=openTemplateEditor;
   $('cancelTemplate').onclick=()=>$('templateDialog').close();
   let draggedCategoryIndex=null;
   $('templateCategories').addEventListener('dragstart',e=>{const row=e.target.closest('.template-category');if(!row)return;draggedCategoryIndex=Number(row.dataset.categoryIndex);row.classList.add('dragging');e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',String(draggedCategoryIndex));});
