@@ -1,8 +1,8 @@
 (() => {
   'use strict';
-  const defaults={wrestling:['Introduction','Warm-up','Technique','Live wrestling','Cool-down'],lifting:['Introduction','Warm-up','Strength','Power','Cool-down'],mental:['Introduction','Breathing','Visualization','Decision-making','Reflection']};
+  const defaults={wrestling:['Roll Call and Announcements','Warm-up','Technique','Live wrestling','Cool-down'],lifting:['Introduction','Warm-up','Strength','Power','Cool-down'],mental:['Introduction','Breathing','Visualization','Decision-making','Reflection']};
   const legacy={wrestling:['Calentamiento','Técnica','Combate','Vuelta a la calma'],lifting:['Calentamiento','Fuerza','Potencia','Vuelta a la calma'],mental:['Respiración','Visualización','Toma de decisiones','Reflexión']};
-  const categoryNames={'Introducción':'Introduction','Calentamiento':'Warm-up','Técnica':'Technique','Combate':'Live wrestling','Vuelta a la calma':'Cool-down','Fuerza':'Strength','Potencia':'Power','Respiración':'Breathing','Visualización':'Visualization','Toma de decisiones':'Decision-making','Reflexión':'Reflection','Otros':'Other'};
+  const categoryNames={'Introducción':'Roll Call and Announcements','Introduction':'Roll Call and Announcements','Calentamiento':'Warm-up','Técnica':'Technique','Combate':'Live wrestling','Vuelta a la calma':'Cool-down','Fuerza':'Strength','Potencia':'Power','Respiración':'Breathing','Visualización':'Visualization','Toma de decisiones':'Decision-making','Reflexión':'Reflection','Otros':'Other'};
   const englishCategory=name=>categoryNames[name]||name;
   const key=s=>String(s).trim().normalize('NFKC').toLocaleLowerCase();
   const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
@@ -17,6 +17,14 @@
     const $=id=>document.getElementById(id);
     let library=read('tp_exercise_library_v1',[]);if(!Array.isArray(library))library=[];
     library=library.map(item=>({...item,category:englishCategory(item.category)}));
+    const starterItems=[['Attendance Check','0',''],['Joke of the Day','0',''],['Goals','0','']];
+    let seeded=false;
+    for(const [name,minutes,notes] of starterItems){
+      if(!library.some(x=>x.track==='wrestling'&&x.category==='Roll Call and Announcements'&&key(x.name)===key(name))){
+        library.push({id:crypto.randomUUID(),track:'wrestling',category:'Roll Call and Announcements',name,minutes:Number(minutes),notes});seeded=true;
+      }
+    }
+    if(seeded)persist('tp_exercise_library_v1',library);
     function remember(row){
       const name=row[0].trim();if(!name)return;
       const state=getState(),same=library.find(x=>x.track===state.track&&key(x.category)===key(row[3])&&key(x.name)===key(name));
