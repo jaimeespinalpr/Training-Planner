@@ -1,47 +1,26 @@
 # Training Planner
 
-Aplicación oficial de planificación de entrenamientos de United Wrestling Club, con mejoras continuas.
+A mobile-first training planner for United Wrestling Club coaches.
 
-**Aplicación:** https://jaimeespinalpr.github.io/Training-Planner/
+**App:** https://jaimeespinalpr.github.io/Training-Planner/
 
-## Uso
+## Features
 
-- Selecciona Wrestling, Lifting o Mind & Focus.
-- Edita el nombre, la fecha, las actividades, sus minutos y sus notas.
-- **Save plan** guarda el entrenamiento en este navegador; **Open** recupera un plan guardado.
-- **Personalizar / Customize** permite subir o quitar un logo PNG/JPG/WebP, indicar club, entrenador, temporada, mensaje del pie y color del documento. La imagen se normaliza a PNG con dimensión máxima de 640 px y se guarda en este dispositivo.
-- **Guardar PDF** prepara un archivo PDF de la fecha y área seleccionadas. Descárgalo o ábrelo antes de compartirlo.
-- **Compartir PDF** prepara ese mismo documento. Pulsa **Compartir archivo PDF** para elegir una aplicación en el menú nativo del móvil. Si Web Share de archivos no está disponible, se descarga el PDF para adjuntarlo manualmente.
+- Plan wrestling, lifting, and mind and focus sessions. Each track has its own draft and exercise library.
+- Add sections and exercises with names, minutes, and coaching notes. Named exercises are saved automatically to the local library for reuse. Editing an exercise updates its library entry; previously saved plans keep their own copies.
+- Customize the club or school, coach, season, footer, document color, and club logo (PNG, JPG, or WebP, up to 10 MB). Logos are converted to PNG at a maximum dimension of 640 pixels and saved on this device.
+- Save a plan locally, then download or share a PDF. The PDF groups activities by section, shows subtotals and planned duration, and continues long tables across pages. Empty sections are omitted. File sharing uses the device's native share menu when supported; otherwise the PDF downloads for manual attachment.
 
-## Secciones y biblioteca de ejercicios
+## Local data and older plans
 
-Cada área de entrenamiento contiene secciones con múltiples ejercicios o puntos. Wrestling incluye Introducción, Calentamiento, Técnica, Combate y Vuelta a la calma. Puedes agregar secciones personalizadas y quitar secciones del entrenamiento.
+Plans, branding, and the exercise library are stored in browser localStorage, not Firebase. Clearing browser data deletes them, so keep a PDF copy of important plans. Cross-device syncing and authenticated assignments are not enabled. Firebase files in this repository are for a possible future integration and are not deployed.
 
-- **Agregar ejercicio** crea un elemento dentro de esa sección, con nombre, minutos y detalles. Cada cambio con nombre no vacío se guarda automáticamente en la biblioteca de esa categoría.
-- **Biblioteca** abre directamente la categoría de la sección. El selector de categorías y el buscador permiten recuperar ejercicios e insertarlos en el entrenamiento actual.
-- La biblioteca está separada por área (Wrestling, Lifting, Mind & Focus) y categoría. Los nombres se comparan sin distinguir mayúsculas ni espacios exteriores para evitar duplicados. Editar un ejercicio actualiza su entrada de biblioteca; los otros planes guardados conservan sus propias copias.
-- Quitar un ejercicio o sección del plan no elimina la biblioteca. **Eliminar de biblioteca** requiere confirmación y no cambia los ejercicios que ya figuran en los planes.
-- Un plan nuevo conserva las categorías predeterminadas vacías; las categorías personalizadas de la biblioteca reaparecen al insertar sus ejercicios.
-- El PDF agrupa las actividades por sección, incluye subtotales y diferencia la duración prevista de la suma de los ejercicios. Las secciones vacías no se imprimen.
+The library uses `tp_exercise_library_v1`. Plans are stored in `tp_draft`, `tp_tracks`, and `tp_templates`, with rows shaped as `[name, minutes, details, category, libraryId]`, plus `categories` and `schemaVersion: 2`. Older plans are normalized when opened, retaining their exercise names, durations, and notes. Built-in Spanish category names from older versions are displayed in English. User-entered names and notes remain as entered.
 
-Almacenamiento: `tp_exercise_library_v1` guarda el catálogo local; los planes mantienen sus filas en `tp_draft`, `tp_tracks` y `tp_templates`, ampliadas a `[nombre, minutos, detalles, categoría, idBiblioteca]`, junto a `categories` y `schemaVersion: 2`. Los planes previos se convierten al abrirlos sin eliminar nombres, tiempos ni notas; las filas anteriores sin categoría se asignan por su posición a las secciones predeterminadas, y las adicionales a Otros.
+## Development and validation
 
-Las verificaciones de `tests/sections.cjs` cubren múltiples ejercicios, guardado automático, escritura sin duplicados parciales, persistencia tras recarga, reutilización, categorías personalizadas, borrado independiente, aislamiento por área y PDF agrupado. Chrome headless usa `--disable-renderer-accessibility` para evitar un cierre del puente ATK observado en este host; estas verificaciones no certifican accesibilidad con lectores de pantalla.
+Serve the project root with `python3 -m http.server 4173 --bind 127.0.0.1`. Install dependencies with `npm ci --ignore-scripts`, then run `npm test`. Tests cover the interface, persistence, PDF export, and the Web Share contract in headless Chrome. Native iOS and Android share menus still require verification on a physical device. The current test script uses `/usr/bin/google-chrome`.
 
-## Documento
+## Publishing
 
-Formato carta, encabezado con logo, nombre del plan, club, fecha y duración; tabla Actividad/Tiempo con detalles; pie con entrenador, temporada y mensaje. Las tablas largas continúan en nuevas páginas con encabezado, logo y numeración. Recupera esa estructura del planner de WPL; no es una copia pixel a pixel de sus estilos. La fuente incluida admite español sin perder acentos. El PDF se genera en el dispositivo, sin enviar planes ni logos a servicios externos.
-
-## Almacenamiento y conexiones
-
-Actualmente los planes y la personalización se guardan en localStorage, no en Firebase. Borrar los datos del navegador elimina ese almacenamiento; conserva una copia PDF de tus planes. La sincronización entre dispositivos y las asignaciones autenticadas no están activadas. Los archivos Firebase del repositorio son material para una futura integración, no conexiones operativas ni reglas desplegadas.
-
-## Desarrollo y validación
-
-Sirve la raíz con `python3 -m http.server 4173 --bind 127.0.0.1`.
-
-`npm ci --ignore-scripts` instala las dependencias bloqueadas. `npm test` ejecuta verificaciones de UI, persistencia, exportación y contrato de Web Share en Chrome headless. El menú nativo de iOS/Android requiere validación en un dispositivo real; la verificación automatizada sustituye esa API para inspeccionar el archivo entregado. El script actual usa `/usr/bin/google-chrome` y el logo de club incluido en `tests/fixtures/`.
-
-## Publicación
-
-GitHub Actions publica los archivos de aplicación y `vendor/`, no dependencias de desarrollo ni archivos Firebase. Bibliotecas jsPDF y AutoTable fijadas mediante package-lock; copias de navegador y licencias en `vendor/`. Al actualizar dependencias, regenerar las copias de vendor y ejecutar las verificaciones. Fuente DejaVu Sans con licencia incluida.
+GitHub Actions publishes application files and `vendor/`, excluding development dependencies and Firebase files. jsPDF and AutoTable versions are locked in `package-lock.json`; browser bundles and licenses are in `vendor/`. Regenerate those bundles and run the tests when dependencies change. The bundled DejaVu Sans font supports accented characters and includes its license.
