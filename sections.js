@@ -1,8 +1,8 @@
 (() => {
   'use strict';
-  const defaults={wrestling:['Roll Call and Announcements','Warm-up','Technique','Live wrestling','Strength and Skill Based Activities','Cool-down'],lifting:['Introduction','Warm-up','Strength','Power','Cool-down'],mental:['Introduction','Breathing','Visualization','Decision-making','Reflection']};
+  const defaults={wrestling:['Roll Call and Announcements','Warm-up','Introduction of New Techniques or Drills','Live wrestling','Strength and Skill Based Activities','Cool-down'],lifting:['Introduction','Warm-up','Strength','Power','Cool-down'],mental:['Introduction','Breathing','Visualization','Decision-making','Reflection']};
   const legacy={wrestling:['Calentamiento','Técnica','Combate','Vuelta a la calma'],lifting:['Calentamiento','Fuerza','Potencia','Vuelta a la calma'],mental:['Respiración','Visualización','Toma de decisiones','Reflexión']};
-  const categoryNames={'Introducción':'Roll Call and Announcements','Introduction':'Roll Call and Announcements','Calentamiento':'Warm-up','Técnica':'Technique','Combate':'Live wrestling','Vuelta a la calma':'Cool-down','Fuerza':'Strength','Potencia':'Power','Respiración':'Breathing','Visualización':'Visualization','Toma de decisiones':'Decision-making','Reflexión':'Reflection','Otros':'Other'};
+  const categoryNames={'Introducción':'Roll Call and Announcements','Introduction':'Roll Call and Announcements','Calentamiento':'Warm-up','Technique':'Introduction of New Techniques or Drills','Técnica':'Introduction of New Techniques or Drills','Combate':'Live wrestling','Vuelta a la calma':'Cool-down','Fuerza':'Strength','Potencia':'Power','Respiración':'Breathing','Visualización':'Visualization','Toma de decisiones':'Decision-making','Reflexión':'Reflection','Otros':'Other'};
   const englishCategory=name=>categoryNames[name]||name;
   const warmupItems=[
     ['Light jog',''],['High knees',''],['Butt kicks',''],['Side shuffles',''],['Carioca / grapevine',''],
@@ -12,6 +12,7 @@
   ];
   const coachWarmupItems=[['Agility and foot speed drills',''],['Core and coordination',''],['Front Roll',''],['Back Roll','']];
   const strengthItems=['Sprawl jumps','Bear crawl forward','Bear crawl backward','Bear crawl lateral','Crab walk forward','Crab walk backward','Plank shoulder taps','Push-up to shoulder tap','Partner push resistance','Partner pull resistance','Partner stance push-pull','Shot defense reaction','Hip pop reaction','Core stabilization plank','Side plank hold','Hollow body hold','Superman hold','Sit-outs','Hip heists','Technical stand-ups','Squat jumps','Broad jumps','Split squat jumps','Lateral bounds','Skater jumps','Tuck jumps','Burpees','Medicine ball slams','Medicine ball chest pass','Medicine ball rotational throw','Band-resisted shots','Band-resisted sprawls','Partner bear crawl chase','Rope climbs','Farmer carries','Sandbag carries','Sandbag cleans','Partner carries','Fireman’s carry walk','Wall sits','Walking lunges','Reverse lunges','Cossack squats','Push-ups','Pull-ups','Chin-ups','Dips','Battle ropes','Sled push','Sled pull','Short explosive sprawls'];
+  const techniqueItems=["Stance and motion","Level change drill","Penetration step","Knee slide penetration","Step-slide in stance","Motion to level change","Motion to penetration step","Fake shot drill","Shadow shot entry","Shadow single leg entry","Shadow double leg entry","Shadow high crotch entry","Shot to feet recovery","Shot and reshot","Shot to cut the corner","Single leg entry without finish","Double leg entry without finish","High crotch entry without finish","Low single entry motion","Sweep single entry motion","Ankle pick motion","Hand touch to shot","Partner hand-touch reaction","Mirror stance motion","Partner mirror drill","Wrist control setup","Inside tie setup","Collar tie setup","Elbow pass setup","Snap down setup","Arm drag setup","2-on-1 setup","Russian tie entry","Underhook entry","Overhook entry","Head position battle","Push-pull setup","Circle to angle","Create angle drill","Clear tie and attack","Hand fight to level change","Hand fight to single leg","Hand fight to double leg","Hand fight to high crotch","Pummeling to attack","Underhook to knee tap","Underhook to single leg","Snap down to front headlock","Front headlock position entry","Sprawl to front headlock","Front headlock to go-behind","Single leg finish position","Double leg finish position","High crotch finish position","Run the pipe drill","Shelf the leg drill","Back trip setup","Crackdown position drill","Whizzer position drill","Limp leg drill","Hip pressure drill","Down block drill","Down block to re-attack","Sprawl, circle, face","Sprawl to go-behind","Baseline defense movement","Sit-out motion","Switch motion","Stand-up motion","Hip heist motion","Granby motion","Mat return footwork","Lift position entry","Gut wrench position drill","Lace position drill","Tilt position drill","Par terre pressure drill","Slow motion technique reps","Partner walk-through reps","Coach command technique reps","Technique chain drill","Position freeze drill","Finish on whistle drill"];
   const key=s=>String(s).trim().normalize('NFKC').toLocaleLowerCase();
   const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
   function normalize(plan){
@@ -45,6 +46,13 @@
       if(!library.some(x=>x.track==='wrestling'&&x.category==='Strength and Skill Based Activities'&&key(x.name)===key(name))){library.push({id:crypto.randomUUID(),track:'wrestling',category:'Strength and Skill Based Activities',name,minutes:0,notes:''});strengthSeeded=true;}
     }
     if(strengthSeeded)persist('tp_exercise_library_v1',library);
+    let techniqueSeeded=false;
+    for(const name of techniqueItems){
+      if(!library.some(x=>x.track==='wrestling'&&x.category==='Introduction of New Techniques or Drills'&&key(x.name)===key(name))){
+        library.push({id:crypto.randomUUID(),track:'wrestling',category:'Introduction of New Techniques or Drills',name,minutes:0,notes:''});techniqueSeeded=true;
+      }
+    }
+    if(techniqueSeeded)persist('tp_exercise_library_v1',library);
     function warmupLibraryItems(){return library.filter(x=>x.track==='wrestling'&&key(x.category)==='warm-up').sort((a,b)=>a.name.localeCompare(b.name));}
     function warmupPanel(state,category){
       if(category!=='Warm-up'||state.track!=='wrestling')return '';
