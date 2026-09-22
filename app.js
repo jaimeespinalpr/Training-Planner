@@ -74,6 +74,6 @@
       catch(e){if(e.name==='AbortError')return;$('pdfStatus').textContent='Your device could not share it. Use Download PDF.';}
     }else{download();$('pdfStatus').textContent='This browser cannot share files directly. Attach the downloaded PDF in your app.';}
   };
-  const sections=PlannerSections.attach({getState:()=>state,cache,render,toast,read,persist});
+  const sections=PlannerSections.attach({getState:()=>state,cache,render,toast,read,persist,savePlan:save});
   window.TP={save,tracks};sections.rememberAll();render();cache();
 })();
