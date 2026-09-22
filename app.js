@@ -11,7 +11,7 @@
   const clone = x => JSON.parse(JSON.stringify(x));
   let toastTimer;
   const toast = msg => {clearTimeout(toastTimer);$('toast').textContent=msg;$('toast').classList.add('show');toastTimer=setTimeout(()=>$('toast').classList.remove('show'),4500);};
-  const persist = (key,value) => {try{localStorage.setItem(key,JSON.stringify(value));return true;}catch{toast('No se pudo guardar en este navegador. Descarga el PDF para conservar el plan.');return false;}};
+  const persist = (key,value) => {try{localStorage.setItem(key,JSON.stringify(value));return true;}catch{toast('Could not save in this browser. Download the PDF to keep your plan.');return false;}};
   const fresh = track => ({track,name:tracks[track].name,date:today(),minutes:90,rows:clone(tracks[track].rows).map(r=>[...r,''])});
   const normalize = p => {const t=tracks[p?.track]?p.track:'wrestling';return PlannerSections.normalize({...fresh(t),...p,track:t,date:p?.date||today(),rows:Array.isArray(p?.rows)?p.rows:fresh(t).rows});};
   let state=normalize(read('tp_draft',fresh('wrestling')));
@@ -29,16 +29,16 @@
   function renderBrand(){ $('brandClub').textContent=settings.club||'Training Planner';$('brandLogo').hidden=!settings.logo;if(settings.logo)$('brandLogo').src=settings.logo; }
   function updateProgress(){sections.updateSummary();const used=state.rows.reduce((n,r)=>n+Number(r[1]),0);$('timeLabel').textContent=`${used} / ${state.minutes} min`;$('timeBar').style.width=`${state.minutes?Math.min(100,used/state.minutes*100):0}%`;}
   function collect(){state.name=$('planName').value.trim()||'Daily Training';state.date=$('planDate').value||today();state.minutes=Math.max(0,Number($('totalMinutes').value)||0);return clone(state);}
-  function cache(){collect();drafts[state.track]=clone(state);persist('tp_tracks',drafts);persist('tp_draft',state);$('savedState').textContent='En este dispositivo';}
-  function save(){collect();const list=read('tp_templates',[]);const next=[clone(state),...list.filter(x=>!(x.name===state.name&&x.track===state.track&&x.date===state.date))].slice(0,100);if(persist('tp_templates',next)){cache();renderTemplates();toast('Plan guardado en este dispositivo');}}
-  function renderTemplates(){const list=read('tp_templates',[]);$('templates').innerHTML=list.length?list.map((p,i)=>`<div class="template"><span>${escapeHtml(p.name)}<small>${escapeHtml(p.date||'')} · ${escapeHtml(p.track||'wrestling')}</small></span><button data-load="${i}">Open</button></div>`).join(''):'<p>Los planes guardados aparecerán aquí.</p>';}
+  function cache(){collect();drafts[state.track]=clone(state);persist('tp_tracks',drafts);persist('tp_draft',state);$('savedState').textContent='Saved on this device';}
+  function save(){collect();const list=read('tp_templates',[]);const next=[clone(state),...list.filter(x=>!(x.name===state.name&&x.track===state.track&&x.date===state.date))].slice(0,100);if(persist('tp_templates',next)){cache();renderTemplates();toast('Plan saved on this device');}}
+  function renderTemplates(){const list=read('tp_templates',[]);$('templates').innerHTML=list.length?list.map((p,i)=>`<div class="template"><span>${escapeHtml(p.name)}<small>${escapeHtml(p.date||'')} · ${escapeHtml(p.track||'wrestling')}</small></span><button data-load="${i}">Open</button></div>`).join(''):'<p>Saved plans will appear here.</p>';}
   $('rows').addEventListener('input',e=>{if(e.target.dataset.i===undefined)return;const k=Number(e.target.dataset.k);state.rows[Number(e.target.dataset.i)][k]=k===1?Math.max(0,Number(e.target.value)||0):e.target.value;sections.remember(state.rows[Number(e.target.dataset.i)]);updateProgress();cache();});
   $('rows').addEventListener('click',e=>{if(e.target.dataset.remove!==undefined){state.rows.splice(Number(e.target.dataset.remove),1);cache();render();}});
   document.querySelectorAll('.track').forEach(b=>b.onclick=()=>{cache();state=normalize(drafts[b.dataset.track]||fresh(b.dataset.track));render();cache();});
   // Section controls are bound by PlannerSections.
   $('saveBtn').onclick=save;
-  $('newBtn').onclick=()=>{state=normalize({...fresh(state.track),rows:[]});state.name='Nuevo entrenamiento';render();cache();};
-  $('templates').onclick=e=>{if(e.target.dataset.load!==undefined){cache();state=normalize(read('tp_templates',[])[Number(e.target.dataset.load)]);render();cache();toast('Plan abierto');}};
+  $('newBtn').onclick=()=>{state=normalize({...fresh(state.track),rows:[]});state.name='New training session';render();cache();};
+  $('templates').onclick=e=>{if(e.target.dataset.load!==undefined){cache();state=normalize(read('tp_templates',[])[Number(e.target.dataset.load)]);render();cache();toast('Plan opened');}};
   ['planName','planDate','totalMinutes'].forEach(id=>$(id).addEventListener('input',()=>{cache();updateProgress();}));
   function logoPreview(){ $('logoPreview').hidden=!pendingLogo;if(pendingLogo)$('logoPreview').src=pendingLogo; }
   $('customizeBtn').onclick=()=>{for(const key of ['club','coach','season','footer','color'])$('custom-'+key).value=settings[key];pendingLogo=settings.logo;$('logoFile').value='';logoPreview();$('customDialog').showModal();};
@@ -48,21 +48,21 @@
   $('logoFile').onchange=async()=>{
     const file=$('logoFile').files[0];if(!file)return;
     const job=++logoJob;
-    if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>10*1024*1024){toast('Selecciona PNG, JPG o WebP de hasta 10 MB.');return;}
+    if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>10*1024*1024){toast('Choose a PNG, JPG, or WebP file up to 10 MB.');return;}
     $('saveCustom').disabled=true;
     const url=URL.createObjectURL(file);
     try{const img=new Image();img.src=url;await img.decode();const scale=Math.min(1,640/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.max(1,Math.round(img.width*scale));c.height=Math.max(1,Math.round(img.height*scale));c.getContext('2d').drawImage(img,0,0,c.width,c.height);if(job===logoJob){pendingLogo=c.toDataURL('image/png');logoPreview();}}
-    catch{toast('No se pudo abrir esa imagen. Intenta con PNG o JPG.');}
+    catch{toast('Could not open that image. Try a PNG or JPG.');}
     finally{URL.revokeObjectURL(url);$('saveCustom').disabled=false;}
   };
-  $('customForm').onsubmit=e=>{e.preventDefault();const next={logo:pendingLogo};for(const key of ['club','coach','season','footer','color'])next[key]=$('custom-'+key).value.trim();if(persist('tp_branding',next)){settings=next;renderBrand();$('customDialog').close();toast('Personalización guardada');}};
+  $('customForm').onsubmit=e=>{e.preventDefault();const next={logo:pendingLogo};for(const key of ['club','coach','season','footer','color'])next[key]=$('custom-'+key).value.trim();if(persist('tp_branding',next)){settings=next;renderBrand();$('customDialog').close();toast('Customization saved');}};
   let prepared=null,previewUrl=null;
   $('pdfBtn').onclick=() => openPdf(false);
   $('shareBtn').onclick=() => openPdf(true);
   async function openPdf(sharing){
-    collect();cache();$('pdfDialog').showModal();$('pdfStatus').textContent='Preparando el PDF…';$('downloadPdf').disabled=true;$('nativeShare').disabled=true;
-    try{prepared=await window.PlannerPDF.build(clone(state),clone(settings),tracks[state.track].title);if(previewUrl)URL.revokeObjectURL(previewUrl);previewUrl=URL.createObjectURL(prepared);$('pdfPreviewLink').href=previewUrl;$('pdfPreviewLink').hidden=false;$('pdfStatus').textContent=`${prepared.name} — Logo, fecha, actividades y pie de página incluidos.`;$('downloadPdf').disabled=false;$('nativeShare').disabled=false;if(sharing)$('nativeShare').focus();}
-    catch(err){prepared=null;$('pdfStatus').textContent='No se pudo generar el PDF. Recarga la página e inténtalo otra vez.';console.error(err);}
+    collect();cache();$('pdfDialog').showModal();$('pdfStatus').textContent='Preparing PDF…';$('downloadPdf').disabled=true;$('nativeShare').disabled=true;
+    try{prepared=await window.PlannerPDF.build(clone(state),clone(settings),tracks[state.track].title);if(previewUrl)URL.revokeObjectURL(previewUrl);previewUrl=URL.createObjectURL(prepared);$('pdfPreviewLink').href=previewUrl;$('pdfPreviewLink').hidden=false;$('pdfStatus').textContent=`${prepared.name} — Logo, date, activities, and footer included.`;$('downloadPdf').disabled=false;$('nativeShare').disabled=false;if(sharing)$('nativeShare').focus();}
+    catch(err){prepared=null;$('pdfStatus').textContent='Could not generate the PDF. Reload the page and try again.';console.error(err);}
   }
   $('closePdf').onclick=()=>$('pdfDialog').close();
   function download(){if(!prepared)return;const a=document.createElement('a');a.href=previewUrl;a.download=prepared.name;document.body.append(a);a.click();a.remove();}
@@ -70,9 +70,9 @@
   $('nativeShare').onclick=async()=>{
     if(!prepared)return;
     if(navigator.share&&navigator.canShare?.({files:[prepared]})){
-      try{await navigator.share({files:[prepared],title:state.name});$('pdfStatus').textContent='PDF enviado a la aplicación seleccionada.';}
-      catch(e){if(e.name==='AbortError')return;$('pdfStatus').textContent='El dispositivo no pudo compartirlo. Usa Descargar PDF.';}
-    }else{download();$('pdfStatus').textContent='Este navegador no permite compartir archivos directamente. Adjunta el PDF descargado en tu aplicación.';}
+      try{await navigator.share({files:[prepared],title:state.name});$('pdfStatus').textContent='PDF sent to the selected app.';}
+      catch(e){if(e.name==='AbortError')return;$('pdfStatus').textContent='Your device could not share it. Use Download PDF.';}
+    }else{download();$('pdfStatus').textContent='This browser cannot share files directly. Attach the downloaded PDF in your app.';}
   };
   const sections=PlannerSections.attach({getState:()=>state,cache,render,toast,read,persist});
   window.TP={save,tracks};sections.rememberAll();render();cache();
