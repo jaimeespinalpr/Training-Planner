@@ -7,9 +7,13 @@
   }
   async function build(plan,brand,trackTitle){
     const {jsPDF}=window.jspdf;
-    const doc=new jsPDF({unit:'pt',format:'letter',compress:true,putOnlyUsedFonts:true});
+    const format=brand.pageSize==='a4'?'a4':'letter';
+    const doc=new jsPDF({unit:'pt',format,compress:true,putOnlyUsedFonts:true});
+    const pageHeight=doc.internal.pageSize.getHeight();
     doc.addFileToVFS('Planner.ttf',await fontData());doc.addFont('Planner.ttf','Planner','normal');doc.setFont('Planner');
     const accent=/^#[0-9a-f]{6}$/i.test(brand.color)?brand.color:'#0d6b4a';
+    const textColor=/^#[0-9a-f]{6}$/i.test(brand.textColor)?brand.textColor:'#25352e';
+    const fontSize=brand.visualSize==='large'?13:brand.visualSize==='compact'?9:11;
     const margin=30,width=552;
     const title=doc.splitTextToSize(String(plan.name||'Daily Training'),430,{fontSize:16});
     const club=doc.splitTextToSize(brand.club||'Training Planner',430,{fontSize:11});
@@ -29,20 +33,21 @@
     const categories=[...new Set([...(plan.categories||[]),...plan.rows.map(r=>r[3]||'Activities')])];
     for(const category of categories){
       const rows=plan.rows.filter(r=>(r[3]||'Activities')===category);if(!rows.length)continue;
-      body.push([{content:`${category} · ${rows.reduce((n,r)=>n+Number(r[1]),0)} min`,colSpan:2,styles:{fillColor:'#e5f0e9',textColor:accent,fontSize:12,cellPadding:8}}]);
+      const categoryColor=/^#[0-9a-f]{6}$/i.test(brand.categoryColors?.[category])?brand.categoryColors[category]:'#e5f0e9';
+      body.push([{content:`${category} · ${rows.reduce((n,r)=>n+Number(r[1]),0)} min`,colSpan:2,styles:{fillColor:categoryColor,textColor:accent,fontSize:12,cellPadding:8}}]);
       rows.forEach(r=>body.push([`${r[0]}${r[2]?'\n'+r[2]:''}`,`${r[1]} min`]));
     }
     doc.autoTable({
       startY:top,margin:{top,left:margin,right:margin,bottom:footerHeight+15},
       head:[['ACTIVITY','TIME']],
       body:body.length?body:[['No activities','—']],
-      theme:'grid',styles:{font:'Planner',fontStyle:'normal',fontSize:11,cellPadding:10,lineColor:accent,lineWidth:0.35,overflow:'linebreak',textColor:'#25352e'},
+      theme:'grid',styles:{font:'Planner',fontStyle:'normal',fontSize,cellPadding:10,lineColor:accent,lineWidth:0.35,overflow:'linebreak',textColor},
       headStyles:{fillColor:accent,textColor:'#ffffff',fontStyle:'normal'},
       columnStyles:{0:{cellWidth:446},1:{cellWidth:106,halign:'center'}},
       rowPageBreak:'avoid',showHead:'everyPage',willDrawPage:header
     });
     const total=doc.getNumberOfPages();
-    for(let p=1;p<=total;p++){doc.setPage(p);doc.setDrawColor(accent);doc.line(30,792-footerHeight,582,792-footerHeight);doc.setFont('Planner');doc.setFontSize(9);doc.setTextColor('#47574e');if(footer.length)doc.text(footer,306,792-footerHeight+15,{align:'center'});doc.text(`Training Planner · ${p} / ${total}`,306,780,{align:'center'});}
+    for(let p=1;p<=total;p++){doc.setPage(p);doc.setDrawColor(accent);doc.line(30,pageHeight-50-footerHeight,doc.internal.pageSize.getWidth()-30,pageHeight-50-footerHeight);doc.setFont('Planner');doc.setFontSize(9);doc.setTextColor('#47574e');if(footer.length)doc.text(footer,doc.internal.pageSize.getWidth()/2,pageHeight-50-footerHeight+15,{align:'center'});doc.text(`Training Planner · ${p} / ${total}`,doc.internal.pageSize.getWidth()/2,pageHeight-62,{align:'center'});}
     const name=(plan.name||'Training').replace(/[\\/:*?"<>|\x00-\x1f]/g,'').trim().slice(0,90)||'Training';
     return new File([doc.output('arraybuffer')],`${name}_${plan.date}.pdf`,{type:'application/pdf'});
   }
