@@ -4,7 +4,13 @@
   const legacy={wrestling:['Calentamiento','Técnica','Combate','Vuelta a la calma'],lifting:['Calentamiento','Fuerza','Potencia','Vuelta a la calma'],mental:['Respiración','Visualización','Toma de decisiones','Reflexión']};
   const categoryNames={'Introducción':'Roll Call and Announcements','Introduction':'Roll Call and Announcements','Calentamiento':'Warm-up','Técnica':'Technique','Combate':'Live wrestling','Vuelta a la calma':'Cool-down','Fuerza':'Strength','Potencia':'Power','Respiración':'Breathing','Visualización':'Visualization','Toma de decisiones':'Decision-making','Reflexión':'Reflection','Otros':'Other'};
   const englishCategory=name=>categoryNames[name]||name;
-  const warmupItems=[['Agility and foot speed drills',''],['Core and coordination',''],['Front Roll',''],['Back Roll','']];
+  const warmupItems=[
+    ['Light jog',''],['High knees',''],['Butt kicks',''],['Side shuffles',''],['Carioca / grapevine',''],
+    ['Backpedal',''],['Progressive short sprints',''],['Jumping jacks',''],['Seal jacks',''],['Light shadow wrestling',''],
+    ['Circles around the mat',''],['Jog with direction changes',''],['Jog + sprawls on whistle',''],['Jog + shots on whistle',''],
+    ['Bear crawl',''],['Crab walk',''],['Duck walk',''],['Frog jumps',''],['Bunny hops',''],['Army crawl','']
+  ];
+  const coachWarmupItems=[['Agility and foot speed drills',''],['Core and coordination',''],['Front Roll',''],['Back Roll','']];
   const key=s=>String(s).trim().normalize('NFKC').toLocaleLowerCase();
   const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
   function normalize(plan){
@@ -28,7 +34,7 @@
     if(seeded)persist('tp_exercise_library_v1',library);
     let warmupTemplates=read('tp_warmup_templates',[]);if(!Array.isArray(warmupTemplates))warmupTemplates=[];
     let warmupSeeded=false;
-    for(const [name,notes] of warmupItems){
+    for(const [name,notes] of [...warmupItems,...coachWarmupItems]){
       if(!library.some(x=>x.track==='wrestling'&&x.category==='Warm-up'&&key(x.name)===key(name))){library.push({id:crypto.randomUUID(),track:'wrestling',category:'Warm-up',name,minutes:0,notes});warmupSeeded=true;}
     }
     if(warmupSeeded)persist('tp_exercise_library_v1',library);
@@ -37,9 +43,10 @@
       if(category!=='Warm-up'||state.track!=='wrestling')return '';
       const selected=state.warmupMode||'coach';
       const options=[['coach','Coach Jaime Warm-up'],['custom','Custom'],...warmupTemplates.map(t=>[`template:${t.id}`,t.name])];
-      const items=selected==='coach'?warmupLibraryItems():selected==='custom'?warmupLibraryItems():(warmupTemplates.find(t=>`template:${t.id}`===selected)?.rows||[]).map(r=>({id:r[4],name:r[0],minutes:r[1],notes:r[2]}));
-      const action=selected==='custom'?'Add selected exercise':'Add full warm-up';
-      return `<div class="warmup-controls"><label>Warm-up group<select data-warmup-mode>${options.map(([value,label])=>`<option value="${esc(value)}"${value===selected?' selected':''}>${esc(label)}</option>`).join('')}</select></label><div class="warmup-items">${items.length?items.map(x=>`<div class="warmup-item"><span>${esc(x.name)}</span><button type="button" data-warmup-add="${esc(x.id||x.name)}">Add</button></div>`).join(''):'<p>No exercises in this warm-up group yet.</p>'}</div><div class="section-actions"><button type="button" data-warmup-add-all>${action}</button><button type="button" data-warmup-save>Save</button><button type="button" data-warmup-save-template>Save as template</button></div></div>`;
+      const items=selected==='coach'?coachWarmupItems.map(([name,notes])=>warmupLibraryItems().find(x=>x.name===name)||({name,notes,minutes:0})):selected==='custom'?[]:(warmupTemplates.find(t=>`template:${t.id}`===selected)?.rows||[]).map(r=>({id:r[4],name:r[0],minutes:r[1],notes:r[2]}));
+      const action=selected==='custom'?'Add all Custom exercises':'Add full warm-up';
+      const customContent=selected==='custom'?'<p>Choose from the complete Custom exercise list. Each exercise can be added individually.</p><button type="button" data-warmup-open-custom>Open Custom exercise list</button>':`<div class="warmup-items">${items.length?items.map(x=>`<div class="warmup-item"><span>${esc(x.name)}</span><button type="button" data-warmup-add="${esc(x.id||x.name)}">Add</button></div>`).join(''):'<p>No exercises in this warm-up group yet.</p>'}</div>`;
+      return `<div class="warmup-controls"><label>Warm-up group<select data-warmup-mode>${options.map(([value,label])=>`<option value="${esc(value)}"${value===selected?' selected':''}>${esc(label)}</option>`).join('')}</select></label>${customContent}<div class="section-actions"><button type="button" data-warmup-add-all>${action}</button><button type="button" data-warmup-save>Save</button><button type="button" data-warmup-save-template>Save as template</button></div></div>`;
     }
     function remember(row){
       const name=row[0].trim();if(!name)return;
@@ -65,14 +72,21 @@
     $('rows').addEventListener('click',e=>{
       const b=e.target.closest('button');if(!b)return;const state=getState();
       if(b.dataset.warmupSave!==undefined){savePlan?.();return;}
+      if(b.dataset.warmupOpenCustom!==undefined){openCustomWarmup();return;}
       if(b.dataset.warmupAdd!==undefined){const item=warmupLibraryItems().find(x=>x.id===b.dataset.warmupAdd||x.name===b.dataset.warmupAdd);if(item&&!state.rows.some(r=>r[3]==='Warm-up'&&key(r[0])===key(item.name))){state.rows.push([item.name,item.minutes,item.notes,'Warm-up',item.id]);cache();render();toast('Exercise added to Warm-up');}return;}
-      if(b.dataset.warmupAddAll!==undefined){const selected=state.warmupMode||'coach';const source=selected==='custom'||selected==='coach'?warmupLibraryItems():(warmupTemplates.find(t=>`template:${t.id}`===selected)?.rows||[]).map(r=>({id:r[4],name:r[0],minutes:r[1],notes:r[2]}));source.forEach(item=>{if(!state.rows.some(r=>r[3]==='Warm-up'&&key(r[0])===key(item.name)))state.rows.push([item.name,item.minutes,item.notes,'Warm-up',item.id]);});cache();render();toast('Warm-up group added to the session');return;}
+      if(b.dataset.warmupAddAll!==undefined){const selected=state.warmupMode||'coach';const source=selected==='coach'?coachWarmupItems.map(([name])=>warmupLibraryItems().find(x=>x.name===name)).filter(Boolean):selected==='custom'?warmupLibraryItems():(warmupTemplates.find(t=>`template:${t.id}`===selected)?.rows||[]).map(r=>({id:r[4],name:r[0],minutes:r[1],notes:r[2]}));source.forEach(item=>{if(!state.rows.some(r=>r[3]==='Warm-up'&&key(r[0])===key(item.name)))state.rows.push([item.name,item.minutes,item.notes,'Warm-up',item.id]);});cache();render();toast('Warm-up group added to the session');return;}
       if(b.dataset.warmupSaveTemplate!==undefined){const rows=state.rows.filter(r=>r[3]==='Warm-up');if(!rows.length){toast('Add at least one Warm-up exercise first.');return;}const name=prompt('Template name','Warm-up group');if(!name?.trim())return;warmupTemplates=[{id:crypto.randomUUID(),name:name.trim(),rows:rows.map(r=>[...r])},...warmupTemplates].slice(0,50);persist('tp_warmup_templates',warmupTemplates);toast('Warm-up template saved');render();return;}
       if(b.dataset.addExercise!==undefined)add(state.categories[Number(b.dataset.addExercise)]);
       if(b.dataset.library!==undefined)openLibrary(state.categories[Number(b.dataset.library)]);
       if(b.dataset.deleteSection!==undefined){const category=state.categories[Number(b.dataset.deleteSection)];if(state.rows.some(r=>r[3]===category)&&!confirm('Remove this section and its exercises from the session? Your library will be kept.'))return;state.rows=state.rows.filter(r=>r[3]!==category);state.categories=state.categories.filter(c=>c!==category);cache();render();}
     });
     $('rows').addEventListener('change',e=>{if(e.target.dataset.warmupMode!==undefined){getState().warmupMode=e.target.value;cache();render();}});
+    function openCustomWarmup(){
+      const dialog=$('warmupCustomDialog'),list=$('warmupCustomItems');if(!dialog||!list)return;
+      list.innerHTML=warmupLibraryItems().map(x=>`<div class="warmup-item"><span>${esc(x.name)}</span><button type="button" data-warmup-modal-add="${esc(x.id)}">Add</button></div>`).join('');dialog.showModal();
+    }
+    $('warmupCustomItems')?.addEventListener('click',e=>{const b=e.target.closest('[data-warmup-modal-add]');if(!b)return;const item=warmupLibraryItems().find(x=>x.id===b.dataset.warmupModalAdd),state=getState();if(item&&!state.rows.some(r=>r[3]==='Warm-up'&&key(r[0])===key(item.name))){state.rows.push([item.name,item.minutes,item.notes,'Warm-up',item.id]);cache();render();toast('Exercise added to Warm-up');}});
+    $('closeWarmupCustom')?.addEventListener('click',()=>$('warmupCustomDialog').close());
     $('addRow').textContent='+ Add section';
     $('addRow').onclick=()=>{$('sectionName').value='';$('sectionDialog').showModal();$('sectionName').focus();};
     $('sectionForm').onsubmit=e=>{e.preventDefault();const name=$('sectionName').value.trim();if(!name)return;const state=getState();if(state.categories.some(c=>key(c)===key(name))){toast('This section already exists.');return;}state.categories.push(name);cache();render();$('sectionDialog').close();};
