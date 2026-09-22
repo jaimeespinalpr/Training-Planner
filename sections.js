@@ -4,12 +4,13 @@
   const legacy={wrestling:['Calentamiento','Técnica','Combate','Vuelta a la calma'],lifting:['Calentamiento','Fuerza','Potencia','Vuelta a la calma'],mental:['Respiración','Visualización','Toma de decisiones','Reflexión']};
   const categoryNames={'Introducción':'Roll Call and Announcements','Introduction':'Roll Call and Announcements','Calentamiento':'Warm-up','Técnica':'Technique','Combate':'Live wrestling','Vuelta a la calma':'Cool-down','Fuerza':'Strength','Potencia':'Power','Respiración':'Breathing','Visualización':'Visualization','Toma de decisiones':'Decision-making','Reflexión':'Reflection','Otros':'Other'};
   const englishCategory=name=>categoryNames[name]||name;
+  const warmupItems=[['Agility and foot speed drills',''],['Core and coordination',''],['Front Roll',''],['Back Roll','']];
   const key=s=>String(s).trim().normalize('NFKC').toLocaleLowerCase();
   const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
   function normalize(plan){
     const track=defaults[plan.track]?plan.track:'wrestling';
     const categories=Array.isArray(plan.categories)?plan.categories.filter(c=>typeof c==='string'&&c.trim()).map(englishCategory):[...defaults[track]];
-    const rows=plan.rows.map((r,i)=>[String(r[0]||''),Math.max(0,Number(r[1])||0),String(r[2]||''),englishCategory(String(r[3]||legacy[track][i]||'Other')),String(r[4]||'')]);
+    const rows=plan.rows.map((r,i)=>[String(r[0]||''),Math.max(0,Number(r[1])||0),String(r[2]||''),englishCategory(String(r[3]||legacy[track][i]||'Other')),String(r[4]||'')]).filter(r=>!(r[3]==='Warm-up'&&key(r[0])==='warm-up + movement'));
     for(const r of rows)if(!categories.includes(r[3]))categories.push(r[3]);
     return {...plan,schemaVersion:2,categories:[...new Set(categories)],rows};
   }
@@ -25,6 +26,21 @@
       }
     }
     if(seeded)persist('tp_exercise_library_v1',library);
+    let warmupTemplates=read('tp_warmup_templates',[]);if(!Array.isArray(warmupTemplates))warmupTemplates=[];
+    let warmupSeeded=false;
+    for(const [name,notes] of warmupItems){
+      if(!library.some(x=>x.track==='wrestling'&&x.category==='Warm-up'&&key(x.name)===key(name))){library.push({id:crypto.randomUUID(),track:'wrestling',category:'Warm-up',name,minutes:0,notes});warmupSeeded=true;}
+    }
+    if(warmupSeeded)persist('tp_exercise_library_v1',library);
+    function warmupLibraryItems(){return library.filter(x=>x.track==='wrestling'&&key(x.category)==='warm-up').sort((a,b)=>a.name.localeCompare(b.name));}
+    function warmupPanel(state,category){
+      if(category!=='Warm-up'||state.track!=='wrestling')return '';
+      const selected=state.warmupMode||'coach';
+      const options=[['coach','Coach Jaime Warm-up'],['custom','Custom'],...warmupTemplates.map(t=>[`template:${t.id}`,t.name])];
+      const items=selected==='coach'?warmupLibraryItems():selected==='custom'?warmupLibraryItems():(warmupTemplates.find(t=>`template:${t.id}`===selected)?.rows||[]).map(r=>({id:r[4],name:r[0],minutes:r[1],notes:r[2]}));
+      const action=selected==='custom'?'Add selected exercise':'Add full warm-up';
+      return `<div class="warmup-controls"><label>Warm-up group<select data-warmup-mode>${options.map(([value,label])=>`<option value="${esc(value)}"${value===selected?' selected':''}>${esc(label)}</option>`).join('')}</select></label><div class="warmup-items">${items.length?items.map(x=>`<div class="warmup-item"><span>${esc(x.name)}</span><button type="button" data-warmup-add="${esc(x.id||x.name)}">Add</button></div>`).join(''):'<p>No exercises in this warm-up group yet.</p>'}</div><div class="section-actions"><button type="button" data-warmup-add-all>${action}</button><button type="button" data-warmup-save-template>Save as template</button></div></div>`;
+    }
     function remember(row){
       const name=row[0].trim();if(!name)return;
       const state=getState(),same=library.find(x=>x.track===state.track&&key(x.category)===key(row[3])&&key(x.name)===key(name));
@@ -41,17 +57,21 @@
       $('rows').innerHTML=state.categories.map((category,c)=>{
         const items=state.rows.map((r,i)=>({r,i})).filter(x=>x.r[3]===category);
         const count=library.filter(x=>x.track===state.track&&key(x.category)===key(category)).length;
-        return `<section class="exercise-section"><div class="section-heading"><h3>${esc(category)}</h3><span data-section-total="${c}">${items.reduce((n,x)=>n+x.r[1],0)} min</span><button type="button" data-delete-section="${c}" aria-label="Delete section ${esc(category)}">×</button></div>${items.map(({r,i})=>`<div class="row"><label>Exercise / point<input data-i="${i}" data-k="0" maxlength="180" value="${esc(r[0])}" placeholder="Exercise or point name"></label><label>Min<input type="number" min="0" max="1440" data-i="${i}" data-k="1" value="${r[1]}"></label><button type="button" class="remove" data-remove="${i}" aria-label="Remove exercise from session">×</button><label class="activity-notes">Details<textarea data-i="${i}" data-k="2" maxlength="5000" rows="2" placeholder="Repetitions, instructions, or coaching points…">${esc(r[2])}</textarea></label></div>`).join('')||'<p class="empty-section">Add coaching points or exercises to this section.</p>'}<div class="section-actions"><button type="button" data-add-exercise="${c}">+ Add exercise</button><button type="button" data-library="${c}">Library · ${count}</button></div></section>`;
+        return `<section class="exercise-section"><div class="section-heading"><h3>${esc(category)}</h3><span data-section-total="${c}">${items.reduce((n,x)=>n+x.r[1],0)} min</span><button type="button" data-delete-section="${c}" aria-label="Delete section ${esc(category)}">×</button></div>${warmupPanel(state,category)}${items.map(({r,i})=>`<div class="row"><label>Exercise / point<input data-i="${i}" data-k="0" maxlength="180" value="${esc(r[0])}" placeholder="Exercise or point name"></label><label>Min<input type="number" min="0" max="1440" data-i="${i}" data-k="1" value="${r[1]}"></label><button type="button" class="remove" data-remove="${i}" aria-label="Remove exercise from session">×</button><label class="activity-notes">Details<textarea data-i="${i}" data-k="2" maxlength="5000" rows="2" placeholder="Repetitions, instructions, or coaching points…">${esc(r[2])}</textarea></label></div>`).join('')||'<p class="empty-section">Add coaching points or exercises to this section.</p>'}<div class="section-actions"><button type="button" data-add-exercise="${c}">+ Add exercise</button><button type="button" data-library="${c}">Library · ${count}</button></div></section>`;
       }).join('');
     }
     function updateSummary(){const state=getState();state.categories.forEach((category,c)=>{const total=$('rows').querySelector(`[data-section-total="${c}"]`);if(total)total.textContent=state.rows.filter(r=>r[3]===category).reduce((n,r)=>n+r[1],0)+' min';const button=$('rows').querySelector(`[data-library="${c}"]`);if(button)button.textContent='Library · '+library.filter(x=>x.track===state.track&&key(x.category)===key(category)).length;});}
     function add(category){const state=getState();state.rows.push(['',0,'',category,'']);cache();render();$('rows').querySelector(`[data-i="${state.rows.length-1}"][data-k="0"]`).focus();}
     $('rows').addEventListener('click',e=>{
       const b=e.target.closest('button');if(!b)return;const state=getState();
+      if(b.dataset.warmupAdd!==undefined){const item=warmupLibraryItems().find(x=>x.id===b.dataset.warmupAdd||x.name===b.dataset.warmupAdd);if(item&&!state.rows.some(r=>r[3]==='Warm-up'&&key(r[0])===key(item.name))){state.rows.push([item.name,item.minutes,item.notes,'Warm-up',item.id]);cache();render();toast('Exercise added to Warm-up');}return;}
+      if(b.dataset.warmupAddAll!==undefined){const selected=state.warmupMode||'coach';const source=selected==='custom'||selected==='coach'?warmupLibraryItems():(warmupTemplates.find(t=>`template:${t.id}`===selected)?.rows||[]).map(r=>({id:r[4],name:r[0],minutes:r[1],notes:r[2]}));source.forEach(item=>{if(!state.rows.some(r=>r[3]==='Warm-up'&&key(r[0])===key(item.name)))state.rows.push([item.name,item.minutes,item.notes,'Warm-up',item.id]);});cache();render();toast('Warm-up group added to the session');return;}
+      if(b.dataset.warmupSaveTemplate!==undefined){const rows=state.rows.filter(r=>r[3]==='Warm-up');if(!rows.length){toast('Add at least one Warm-up exercise first.');return;}const name=prompt('Template name','Warm-up group');if(!name?.trim())return;warmupTemplates=[{id:crypto.randomUUID(),name:name.trim(),rows:rows.map(r=>[...r])},...warmupTemplates].slice(0,50);persist('tp_warmup_templates',warmupTemplates);toast('Warm-up template saved');render();return;}
       if(b.dataset.addExercise!==undefined)add(state.categories[Number(b.dataset.addExercise)]);
       if(b.dataset.library!==undefined)openLibrary(state.categories[Number(b.dataset.library)]);
       if(b.dataset.deleteSection!==undefined){const category=state.categories[Number(b.dataset.deleteSection)];if(state.rows.some(r=>r[3]===category)&&!confirm('Remove this section and its exercises from the session? Your library will be kept.'))return;state.rows=state.rows.filter(r=>r[3]!==category);state.categories=state.categories.filter(c=>c!==category);cache();render();}
     });
+    $('rows').addEventListener('change',e=>{if(e.target.dataset.warmupMode!==undefined){getState().warmupMode=e.target.value;cache();render();}});
     $('addRow').textContent='+ Add section';
     $('addRow').onclick=()=>{$('sectionName').value='';$('sectionDialog').showModal();$('sectionName').focus();};
     $('sectionForm').onsubmit=e=>{e.preventDefault();const name=$('sectionName').value.trim();if(!name)return;const state=getState();if(state.categories.some(c=>key(c)===key(name))){toast('This section already exists.');return;}state.categories.push(name);cache();render();$('sectionDialog').close();};
