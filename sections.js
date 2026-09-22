@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const defaults={wrestling:['Roll Call and Announcements','Warm-up','Technique','Live wrestling','Cool-down'],lifting:['Introduction','Warm-up','Strength','Power','Cool-down'],mental:['Introduction','Breathing','Visualization','Decision-making','Reflection']};
+  const defaults={wrestling:['Roll Call and Announcements','Warm-up','Technique','Live wrestling','Strength and Skill Based Activities','Cool-down'],lifting:['Introduction','Warm-up','Strength','Power','Cool-down'],mental:['Introduction','Breathing','Visualization','Decision-making','Reflection']};
   const legacy={wrestling:['Calentamiento','Técnica','Combate','Vuelta a la calma'],lifting:['Calentamiento','Fuerza','Potencia','Vuelta a la calma'],mental:['Respiración','Visualización','Toma de decisiones','Reflexión']};
   const categoryNames={'Introducción':'Roll Call and Announcements','Introduction':'Roll Call and Announcements','Calentamiento':'Warm-up','Técnica':'Technique','Combate':'Live wrestling','Vuelta a la calma':'Cool-down','Fuerza':'Strength','Potencia':'Power','Respiración':'Breathing','Visualización':'Visualization','Toma de decisiones':'Decision-making','Reflexión':'Reflection','Otros':'Other'};
   const englishCategory=name=>categoryNames[name]||name;
@@ -11,11 +11,13 @@
     ['Bear crawl',''],['Crab walk',''],['Duck walk',''],['Frog jumps',''],['Bunny hops',''],['Army crawl','']
   ];
   const coachWarmupItems=[['Agility and foot speed drills',''],['Core and coordination',''],['Front Roll',''],['Back Roll','']];
+  const strengthItems=['Sprawl jumps','Bear crawl forward','Bear crawl backward','Bear crawl lateral','Crab walk forward','Crab walk backward','Plank shoulder taps','Push-up to shoulder tap','Partner push resistance','Partner pull resistance','Partner stance push-pull','Shot defense reaction','Hip pop reaction','Core stabilization plank','Side plank hold','Hollow body hold','Superman hold','Sit-outs','Hip heists','Technical stand-ups','Squat jumps','Broad jumps','Split squat jumps','Lateral bounds','Skater jumps','Tuck jumps','Burpees','Medicine ball slams','Medicine ball chest pass','Medicine ball rotational throw','Band-resisted shots','Band-resisted sprawls','Partner bear crawl chase','Rope climbs','Farmer carries','Sandbag carries','Sandbag cleans','Partner carries','Fireman’s carry walk','Wall sits','Walking lunges','Reverse lunges','Cossack squats','Push-ups','Pull-ups','Chin-ups','Dips','Battle ropes','Sled push','Sled pull','Short explosive sprawls'];
   const key=s=>String(s).trim().normalize('NFKC').toLocaleLowerCase();
   const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
   function normalize(plan){
     const track=defaults[plan.track]?plan.track:'wrestling';
     const categories=Array.isArray(plan.categories)?plan.categories.filter(c=>typeof c==='string'&&c.trim()).map(englishCategory):[...defaults[track]];
+    for(const category of defaults[track])if(!categories.includes(category))categories.push(category);
     const rows=plan.rows.map((r,i)=>[String(r[0]||''),Math.max(0,Number(r[1])||0),String(r[2]||''),englishCategory(String(r[3]||legacy[track][i]||'Other')),String(r[4]||'')]).filter(r=>!(r[3]==='Warm-up'&&key(r[0])==='warm-up + movement'));
     for(const r of rows)if(!categories.includes(r[3]))categories.push(r[3]);
     return {...plan,schemaVersion:2,categories:[...new Set(categories)],rows};
@@ -38,6 +40,11 @@
       if(!library.some(x=>x.track==='wrestling'&&x.category==='Warm-up'&&key(x.name)===key(name))){library.push({id:crypto.randomUUID(),track:'wrestling',category:'Warm-up',name,minutes:0,notes});warmupSeeded=true;}
     }
     if(warmupSeeded)persist('tp_exercise_library_v1',library);
+    let strengthSeeded=false;
+    for(const name of strengthItems){
+      if(!library.some(x=>x.track==='wrestling'&&x.category==='Strength and Skill Based Activities'&&key(x.name)===key(name))){library.push({id:crypto.randomUUID(),track:'wrestling',category:'Strength and Skill Based Activities',name,minutes:0,notes:''});strengthSeeded=true;}
+    }
+    if(strengthSeeded)persist('tp_exercise_library_v1',library);
     function warmupLibraryItems(){return library.filter(x=>x.track==='wrestling'&&key(x.category)==='warm-up').sort((a,b)=>a.name.localeCompare(b.name));}
     function warmupPanel(state,category){
       if(category!=='Warm-up'||state.track!=='wrestling')return '';
