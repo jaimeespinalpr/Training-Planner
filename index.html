@@ -4,7 +4,7 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#07131f"><meta name="description" content="Mobile-first wrestling training planner">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2307131f'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-family='Arial' font-size='24' font-weight='700' fill='%23c9f36b'%3ETP%3C/text%3E%3C/svg%3E">
-  <title>Training Planner</title><link rel="stylesheet" href="styles.css?v=4"><link rel="stylesheet" href="document-ui.css?v=3">
+  <title>Training Planner</title><link rel="stylesheet" href="styles.css?v=3"><link rel="stylesheet" href="document-ui.css?v=3">
 </head>
 <body>
   <header class="topbar"><div class="brand"><span class="brand-mark">TP</span><div><strong>Training Planner</strong><small id="brandClub">United Wrestling Club</small><img id="brandLogo" alt="Club logo" hidden></div></div><button id="saveBtn" class="button primary">Save plan</button></header>
@@ -15,7 +15,7 @@
       <div class="meta-grid"><label>Plan name<input id="planName" value="Competition Prep — Week 1"></label><label>Date<input id="planDate" type="date"></label><label>Total minutes<input id="totalMinutes" type="number" min="0" value="90"></label></div>
       <div class="progress-line"><span id="timeLabel">0 / 90 min</span><div><i id="timeBar"></i></div></div>
       <p class="library-hint">Add exercises or coaching points to each section. They are saved automatically to that category in this browser.</p><button id="openLibrary" class="button ghost" type="button">Exercise library by category</button><div id="rows" class="rows"></div><button id="addRow" class="add-row">＋ Add activity</button>
-      <div class="actions"><button id="customizeBtn" class="button ghost">Customize</button><button id="pdfBtn" class="button secondary">Save PDF</button><button id="shareBtn" class="button ghost">Share PDF</button></div>
+      <div class="actions"><button id="customizeBtn" class="button ghost">Customize</button><button id="editTemplateBtn" class="button ghost">Edit Template</button><button id="pdfBtn" class="button secondary">Save PDF</button><button id="shareBtn" class="button ghost">Share PDF</button></div>
     </section>
     <section class="bottom-grid"><article class="mini-card"><p class="eyebrow">SAVED PLANS</p><h3>Recent templates</h3><div id="templates" class="template-list"></div></article><article class="mini-card accent-card"><p class="eyebrow">COACH NOTE</p><h3>Keep it actionable.</h3><p>Use short activities, clear time blocks, and one coaching cue per section.</p><button id="newBtn" class="text-button">Start a fresh plan →</button></article></section>
   </main>
@@ -37,6 +37,18 @@
       <div class="actions"><button id="cancelCustom" type="button" class="button ghost">Cancel</button><button id="saveCustom" class="button secondary" type="submit">Save customization</button></div>
     </form>
   </dialog>
+  <dialog id="templateDialog" aria-labelledby="templateTitle">
+    <form id="templateForm">
+      <h2 id="templateTitle">Edit Template</h2>
+      <p>Reorder categories and choose how the plan looks on screen and in the PDF.</p>
+      <h3>Category order and colors</h3><div id="templateCategories" class="template-categories"></div>
+      <label>Document color<input id="template-document-color" type="color"></label>
+      <label>Text color<input id="template-text-color" type="color"></label>
+      <label>Page size<select id="template-page-size"><option value="letter">Letter</option><option value="a4">A4</option></select></label>
+      <label>Visual size<select id="template-visual-size"><option value="compact">Compact</option><option value="standard">Standard</option><option value="large">Large</option></select></label>
+      <div class="actions"><button id="cancelTemplate" type="button" class="button ghost">Cancel</button><button class="button secondary" type="submit">Save template settings</button></div>
+    </form>
+  </dialog>
   <dialog id="pdfDialog" aria-labelledby="pdfTitle">
     <h2 id="pdfTitle">Training PDF</h2><p id="pdfStatus" role="status"></p>
     <a id="pdfPreviewLink" target="_blank" rel="noopener" hidden>Preview PDF before sharing</a>
@@ -44,5 +56,5 @@
     <p>On supported phones, choose WhatsApp, email, or Files. If your browser cannot share files, the PDF will download instead.</p>
   </dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="vendor/jspdf.umd.min.js"></script><script src="vendor/jspdf.plugin.autotable.min.js"></script><script src="pdf-export.js?v=4"></script><script src="sections.js?v=10"></script><script src="app.js?v=5"></script>
+  <script src="vendor/jspdf.umd.min.js"></script><script src="vendor/jspdf.plugin.autotable.min.js"></script><script src="pdf-export.js?v=5"></script><script src="sections.js?v=9"></script><script src="app.js?v=6"></script>
 </body></html>
