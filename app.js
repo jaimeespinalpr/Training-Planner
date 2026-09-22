@@ -16,7 +16,7 @@
   const normalize = p => {const t=tracks[p?.track]?p.track:'wrestling';return PlannerSections.normalize({...fresh(t),...p,track:t,date:p?.date||today(),rows:Array.isArray(p?.rows)?p.rows:fresh(t).rows});};
   let state=normalize(read('tp_draft',fresh('wrestling')));
   let drafts=read('tp_tracks',{});
-  let settings={club:'United Wrestling Club',coach:'',season:'',footer:'',color:'#0d6b4a',logo:'',...read('tp_branding',{})};
+  let settings={club:'United Wrestling Club',coach:'',season:'',footer:'',color:'#0d6b4a',textColor:'#25352e',pageSize:'letter',visualSize:'standard',categoryColors:{},logo:'',...read('tp_branding',{})};
   let pendingLogo='';
   const escapeHtml=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
   function render(){
@@ -26,7 +26,7 @@
     sections.rememberAll();
     sections.renderRows();updateProgress();renderTemplates();renderBrand();
   }
-  function renderBrand(){ $('brandClub').textContent=settings.club||'Training Planner';$('brandLogo').hidden=!settings.logo;if(settings.logo)$('brandLogo').src=settings.logo; }
+  function renderBrand(){ $('brandClub').textContent=settings.club||'Training Planner';$('brandLogo').hidden=!settings.logo;if(settings.logo)$('brandLogo').src=settings.logo;document.body.dataset.visualSize=settings.visualSize||'standard';document.documentElement.style.setProperty('--document-color',settings.color||'#0d6b4a');document.documentElement.style.setProperty('--document-text-color',settings.textColor||'#25352e'); }
   function updateProgress(){sections.updateSummary();const used=state.rows.reduce((n,r)=>n+Number(r[1]),0);$('timeLabel').textContent=`${used} / ${state.minutes} min`;$('timeBar').style.width=`${state.minutes?Math.min(100,used/state.minutes*100):0}%`;}
   function collect(){state.name=$('planName').value.trim()||'Daily Training';state.date=$('planDate').value||today();state.minutes=Math.max(0,Number($('totalMinutes').value)||0);return clone(state);}
   function cache(){collect();drafts[state.track]=clone(state);persist('tp_tracks',drafts);persist('tp_draft',state);$('savedState').textContent='Saved on this device';}
@@ -55,7 +55,18 @@
     catch{toast('Could not open that image. Try a PNG or JPG.');}
     finally{URL.revokeObjectURL(url);$('saveCustom').disabled=false;}
   };
-  $('customForm').onsubmit=e=>{e.preventDefault();const next={logo:pendingLogo};for(const key of ['club','coach','season','footer','color'])next[key]=$('custom-'+key).value.trim();if(persist('tp_branding',next)){settings=next;renderBrand();$('customDialog').close();toast('Customization saved');}};
+  $('customForm').onsubmit=e=>{e.preventDefault();const next={...settings,logo:pendingLogo};for(const key of ['club','coach','season','footer','color'])next[key]=$('custom-'+key).value.trim();if(persist('tp_branding',next)){settings=next;renderBrand();$('customDialog').close();toast('Customization saved');}};
+  let templateDraft=null;
+  function renderTemplateEditor(){
+    templateDraft={categories:[...state.categories],categoryColors:{...(settings.categoryColors||{})},color:settings.color||'#0d6b4a',textColor:settings.textColor||'#25352e',pageSize:settings.pageSize||'letter',visualSize:settings.visualSize||'standard'};
+    $('template-document-color').value=templateDraft.color;$('template-text-color').value=templateDraft.textColor;$('template-page-size').value=templateDraft.pageSize;$('template-visual-size').value=templateDraft.visualSize;
+    $('templateCategories').innerHTML=templateDraft.categories.map((category,i)=>`<div class="template-category" data-category-index="${i}"><span>${escapeHtml(category)}</span><input type="color" value="${templateDraft.categoryColors[category]||templateDraft.color}" data-category-color aria-label="Color for ${escapeHtml(category)}"><button type="button" data-category-up="${i}"${i===0?' disabled':''}>↑</button><button type="button" data-category-down="${i}"${i===templateDraft.categories.length-1?' disabled':''}>↓</button></div>`).join('');
+  }
+  $('editTemplateBtn').onclick=()=>{renderTemplateEditor();$('templateDialog').showModal();};
+  $('cancelTemplate').onclick=()=>$('templateDialog').close();
+  $('templateCategories').onclick=e=>{const b=e.target.closest('button');if(!b)return;const i=Number(b.dataset.categoryUp??b.dataset.categoryDown),dir=b.dataset.categoryUp!==undefined?-1:1;const j=i+dir;if(j<0||j>=templateDraft.categories.length)return;[templateDraft.categories[i],templateDraft.categories[j]]=[templateDraft.categories[j],templateDraft.categories[i]];renderTemplateEditor();};
+  $('templateCategories').oninput=e=>{if(e.target.dataset.categoryColor!==undefined){const row=e.target.closest('[data-category-index]');templateDraft.categoryColors[templateDraft.categories[Number(row.dataset.categoryIndex)]]=e.target.value;}};
+  $('templateForm').onsubmit=e=>{e.preventDefault();templateDraft.color=$('template-document-color').value;templateDraft.textColor=$('template-text-color').value;templateDraft.pageSize=$('template-page-size').value;templateDraft.visualSize=$('template-visual-size').value;state.categories=templateDraft.categories;settings={...settings,...templateDraft};if(persist('tp_branding',settings)){cache();render();$('templateDialog').close();toast('Template settings saved');}};
   let prepared=null,previewUrl=null;
   $('pdfBtn').onclick=() => openPdf(false);
   $('shareBtn').onclick=() => openPdf(true);
@@ -74,6 +85,6 @@
       catch(e){if(e.name==='AbortError')return;$('pdfStatus').textContent='Your device could not share it. Use Download PDF.';}
     }else{download();$('pdfStatus').textContent='This browser cannot share files directly. Attach the downloaded PDF in your app.';}
   };
-  const sections=PlannerSections.attach({getState:()=>state,cache,render,toast,read,persist,savePlan:save});
+  const sections=PlannerSections.attach({getState:()=>state,cache,render,toast,read,persist,savePlan:save,getSettings:()=>settings});
   window.TP={save,tracks};sections.rememberAll();render();cache();
 })();
