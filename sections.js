@@ -14,7 +14,7 @@
     for(const r of rows)if(!categories.includes(r[3]))categories.push(r[3]);
     return {...plan,schemaVersion:2,categories:[...new Set(categories)],rows};
   }
-  function attach({getState,cache,render,toast,read,persist}){
+  function attach({getState,cache,render,toast,read,persist,savePlan}){
     const $=id=>document.getElementById(id);
     let library=read('tp_exercise_library_v1',[]);if(!Array.isArray(library))library=[];
     library=library.map(item=>({...item,category:englishCategory(item.category)}));
@@ -39,7 +39,7 @@
       const options=[['coach','Coach Jaime Warm-up'],['custom','Custom'],...warmupTemplates.map(t=>[`template:${t.id}`,t.name])];
       const items=selected==='coach'?warmupLibraryItems():selected==='custom'?warmupLibraryItems():(warmupTemplates.find(t=>`template:${t.id}`===selected)?.rows||[]).map(r=>({id:r[4],name:r[0],minutes:r[1],notes:r[2]}));
       const action=selected==='custom'?'Add selected exercise':'Add full warm-up';
-      return `<div class="warmup-controls"><label>Warm-up group<select data-warmup-mode>${options.map(([value,label])=>`<option value="${esc(value)}"${value===selected?' selected':''}>${esc(label)}</option>`).join('')}</select></label><div class="warmup-items">${items.length?items.map(x=>`<div class="warmup-item"><span>${esc(x.name)}</span><button type="button" data-warmup-add="${esc(x.id||x.name)}">Add</button></div>`).join(''):'<p>No exercises in this warm-up group yet.</p>'}</div><div class="section-actions"><button type="button" data-warmup-add-all>${action}</button><button type="button" data-warmup-save-template>Save as template</button></div></div>`;
+      return `<div class="warmup-controls"><label>Warm-up group<select data-warmup-mode>${options.map(([value,label])=>`<option value="${esc(value)}"${value===selected?' selected':''}>${esc(label)}</option>`).join('')}</select></label><div class="warmup-items">${items.length?items.map(x=>`<div class="warmup-item"><span>${esc(x.name)}</span><button type="button" data-warmup-add="${esc(x.id||x.name)}">Add</button></div>`).join(''):'<p>No exercises in this warm-up group yet.</p>'}</div><div class="section-actions"><button type="button" data-warmup-add-all>${action}</button><button type="button" data-warmup-save>Save</button><button type="button" data-warmup-save-template>Save as template</button></div></div>`;
     }
     function remember(row){
       const name=row[0].trim();if(!name)return;
@@ -64,6 +64,7 @@
     function add(category){const state=getState();state.rows.push(['',0,'',category,'']);cache();render();$('rows').querySelector(`[data-i="${state.rows.length-1}"][data-k="0"]`).focus();}
     $('rows').addEventListener('click',e=>{
       const b=e.target.closest('button');if(!b)return;const state=getState();
+      if(b.dataset.warmupSave!==undefined){savePlan?.();return;}
       if(b.dataset.warmupAdd!==undefined){const item=warmupLibraryItems().find(x=>x.id===b.dataset.warmupAdd||x.name===b.dataset.warmupAdd);if(item&&!state.rows.some(r=>r[3]==='Warm-up'&&key(r[0])===key(item.name))){state.rows.push([item.name,item.minutes,item.notes,'Warm-up',item.id]);cache();render();toast('Exercise added to Warm-up');}return;}
       if(b.dataset.warmupAddAll!==undefined){const selected=state.warmupMode||'coach';const source=selected==='custom'||selected==='coach'?warmupLibraryItems():(warmupTemplates.find(t=>`template:${t.id}`===selected)?.rows||[]).map(r=>({id:r[4],name:r[0],minutes:r[1],notes:r[2]}));source.forEach(item=>{if(!state.rows.some(r=>r[3]==='Warm-up'&&key(r[0])===key(item.name)))state.rows.push([item.name,item.minutes,item.notes,'Warm-up',item.id]);});cache();render();toast('Warm-up group added to the session');return;}
       if(b.dataset.warmupSaveTemplate!==undefined){const rows=state.rows.filter(r=>r[3]==='Warm-up');if(!rows.length){toast('Add at least one Warm-up exercise first.');return;}const name=prompt('Template name','Warm-up group');if(!name?.trim())return;warmupTemplates=[{id:crypto.randomUUID(),name:name.trim(),rows:rows.map(r=>[...r])},...warmupTemplates].slice(0,50);persist('tp_warmup_templates',warmupTemplates);toast('Warm-up template saved');render();return;}
