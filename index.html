@@ -12,7 +12,7 @@
     <section class="hero"><div><p class="eyebrow">BUILD. ASSIGN. EXECUTE.</p><h1>Plan the work.<br><em>Win the match.</em></h1><p class="hero-copy">A focused training workspace for wrestling coaches, built for the phone first.</p></div></section>
     <nav class="track-tabs" aria-label="Training tracks"><button class="track active" data-track="wrestling">Wrestling</button><button class="track" data-track="lifting">Lifting</button><button class="track" data-track="mental">Mind &amp; Focus</button></nav>
     <section class="planner-card"><div class="section-head"><div><p class="eyebrow">SESSION BUILDER</p><h2 id="trackTitle">Wrestling practice</h2></div><span id="savedState" class="status">Saved on this device</span></div>
-      <div class="meta-grid"><label>Plan name<input id="planName" value="Competition Prep — Week 1"></label><label>Date<input id="planDate" type="date"></label><label>Total minutes<input id="totalMinutes" type="number" min="0" value="90"></label></div>
+      <div class="meta-grid"><label>Plan name<input id="planName" value="Competition Prep — Week 1"></label><label>Date<input id="planDate" type="date"></label><label>Total minutes<input id="totalMinutes" type="number" min="0" value="90" readonly aria-readonly="true"></label></div>
       <div class="progress-line"><span id="timeLabel">0 / 90 min</span><div><i id="timeBar"></i></div></div>
       <p class="library-hint">Add exercises or coaching points to each section. They are saved automatically to that category in this browser.</p><button id="openLibrary" class="button ghost" type="button">Exercise library by category</button><div id="rows" class="rows"></div><button id="addRow" class="add-row">＋ Add activity</button>
       <div class="actions"><button id="customizeBtn" class="button ghost">Customize</button><button id="editTemplateBtn" class="button ghost">Edit Template</button><button id="pdfBtn" class="button secondary">Save PDF</button><button id="shareBtn" class="button ghost">Share PDF</button></div>
@@ -56,5 +56,5 @@
     <p>On supported phones, choose WhatsApp, email, or Files. If your browser cannot share files, the PDF will download instead.</p>
   </dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="vendor/young-guns-logo.js?v=1"></script><script src="vendor/jspdf.umd.min.js"></script><script src="vendor/jspdf.plugin.autotable.min.js"></script><script src="pdf-export.js?v=7"></script><script src="sections.js?v=15"></script><script src="app.js?v=10"></script>
+  <script src="vendor/young-guns-logo.js?v=1"></script><script src="vendor/jspdf.umd.min.js"></script><script src="vendor/jspdf.plugin.autotable.min.js"></script><script src="pdf-export.js?v=7"></script><script src="sections.js?v=15"></script><script src="app.js?v=11"></script>
 </body></html>
