@@ -1,6 +1,6 @@
 # Training Planner
 
-A mobile-first training planner for United Wrestling Club coaches.
+A mobile-first training planner for Young Guns Nashville coaches.
 
 **App:** https://jaimeespinalpr.github.io/Training-Planner/
 

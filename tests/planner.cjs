@@ -11,7 +11,7 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
  page.on('pageerror',e=>errors.push(String(e)));page.on('response',r=>{if(r.status()>=400)failures.push(r.url());});
  await page.goto(process.env.TP_URL||`http://127.0.0.1:${server.address().port}/`);
  await page.locator('#customizeBtn').click();
- await page.locator('#custom-club').fill('United Wrestling Club');await page.locator('#custom-coach').fill('Jaime Espinal');await page.locator('#custom-season').fill('2026–2027');await page.locator('#custom-footer').fill('Disciplina, técnica y corazón');
+ await page.locator('#custom-club').fill('Young Guns Nashville');await page.locator('#custom-coach').fill('Jaime Espinal');await page.locator('#custom-season').fill('2026–2027');await page.locator('#custom-footer').fill('Disciplina, técnica y corazón');
  await page.locator('#logoFile').setInputFiles(path.join(__dirname,'fixtures/club-logo.png'));
  await page.waitForFunction(()=>document.querySelector('#logoPreview').src.startsWith('data:')&&!document.querySelector('#saveCustom').disabled);
  await page.locator('#saveCustom').click();await page.reload();assert.equal(await page.locator('#brandLogo').isVisible(),true);

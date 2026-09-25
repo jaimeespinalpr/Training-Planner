@@ -7,7 +7,7 @@
     mental:{title:'Mind & focus session',name:'Competition Mindset',rows:[['Breathing reset',5],['Visualization: first score',10],['Decision game',20],['Journal + cue words',10]]}
   };
   const today = () => {const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
-  const read = (key,fallback) => {try{return JSON.parse(localStorage.getItem(key)) ?? fallback;}catch{return fallback;}};
+  const read = (key,fallback) => {try{return JSON.parse(localStorage.getItem(key),(_key,value)=>typeof value==='string'?value.replace(/United\s+Wrestling\s+Club/gi,'Young Guns Nashville'):value) ?? fallback;}catch{return fallback;}};
   const clone = x => JSON.parse(JSON.stringify(x));
   let toastTimer;
   const toast = msg => {clearTimeout(toastTimer);$('toast').textContent=msg;$('toast').classList.add('show');toastTimer=setTimeout(()=>$('toast').classList.remove('show'),4500);};
@@ -16,7 +16,11 @@
   const normalize = p => {const t=tracks[p?.track]?p.track:'wrestling';return PlannerSections.normalize({...fresh(t),...p,track:t,date:p?.date||today(),rows:Array.isArray(p?.rows)?p.rows:fresh(t).rows});};
   let state=normalize(read('tp_draft',fresh('wrestling')));
   let drafts=read('tp_tracks',{});
-  let settings={club:'United Wrestling Club',coach:'',season:'',footer:'',color:'#0d6b4a',textColor:'#25352e',pageSize:'letter',visualSize:'standard',categoryColors:{},logo:'',...read('tp_branding',{})};
+  let settings={club:'Young Guns Nashville',coach:'',season:'',footer:'',color:'#0d6b4a',textColor:'#25352e',pageSize:'letter',visualSize:'standard',categoryColors:{},logo:window.YOUNG_GUNS_LOGO,...read('tp_branding',{})};
+  if(settings.brandVersion!=='young-guns-nashville-1'){
+    settings={...settings,club:'Young Guns Nashville',logo:window.YOUNG_GUNS_LOGO,brandVersion:'young-guns-nashville-1'};
+    persist('tp_branding',settings);
+  }
   let pendingLogo='';
   const escapeHtml=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
   function render(){

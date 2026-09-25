@@ -27,7 +27,7 @@
       doc.setFontSize(11);doc.setTextColor('#25352e');doc.text(club,40,49+title.length*19);
       doc.setFontSize(10);doc.text(`${plan.date}   |   ${trackTitle}`,40,top-36);
       doc.text(`Planned duration: ${plan.minutes} min  |  Exercises: ${plan.rows.reduce((n,r)=>n+Number(r[1]),0)} min`,40,top-21);
-      if(brand.logo){const image=doc.getImageProperties(brand.logo);const ratio=Math.min(62/image.width,62/image.height);doc.addImage(brand.logo,'PNG',510,37,image.width*ratio,image.height*ratio,'club-logo','FAST');}
+      if(brand.logo){if(brand.logo===window.YOUNG_GUNS_LOGO){doc.setFillColor('#080808');doc.rect(508,35,66,66,'F');}const image=doc.getImageProperties(brand.logo);const ratio=Math.min(62/image.width,62/image.height);doc.addImage(brand.logo,'PNG',510,37,image.width*ratio,image.height*ratio,'club-logo','FAST');}
     };
     const body=[];
     const categories=[...new Set([...(plan.categories||[]),...plan.rows.map(r=>r[3]||'Activities')])];
