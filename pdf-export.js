@@ -34,8 +34,8 @@
     for(const category of categories){
       const rows=plan.rows.filter(r=>(r[3]||'Activities')===category);if(!rows.length)continue;
       const categoryColor=/^#[0-9a-f]{6}$/i.test(brand.categoryColors?.[category])?brand.categoryColors[category]:'#f3e2e2';
-      body.push([{content:`${category} · ${rows.reduce((n,r)=>n+Number(r[1]),0)} min`,colSpan:2,styles:{fillColor:categoryColor,textColor:accent,fontSize:12,cellPadding:8}}]);
-      rows.forEach(r=>body.push([`${r[0]}${r[2]?'\n'+r[2]:''}`,`${r[1]} min`]));
+      body.push([{content:`${category} · ${category==='Warm-up'?Math.max(0,Number(plan.warmupMinutes)||0):rows.reduce((n,r)=>n+Number(r[1]),0)} min`,colSpan:2,styles:{fillColor:categoryColor,textColor:accent,fontSize:12,cellPadding:8}}]);
+      rows.forEach(r=>body.push([`${r[0]}${r[2]?'\n'+r[2]:''}`,category==='Warm-up'?'':`${r[1]} min`]));
     }
     doc.autoTable({
       startY:top,margin:{top,left:margin,right:margin,bottom:footerHeight+15},
