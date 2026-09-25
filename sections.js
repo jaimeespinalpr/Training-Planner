@@ -25,7 +25,7 @@
     for(const category of defaults[track])if(!categories.includes(category))categories.push(category);
     const rows=plan.rows.map((r,i)=>[String(r[0]||''),Math.max(0,Number(r[1])||0),String(r[2]||''),categoryForTrack(String(r[3]||legacy[track][i]||'Other'),track),String(r[4]||'')]).filter(r=>!(r[3]==='Warm-up'&&key(r[0])==='warm-up + movement'));
     for(const r of rows)if(!categories.includes(r[3]))categories.push(r[3]);
-    return {...plan,schemaVersion:2,warmupMinutes:Math.max(0,Number(plan.warmupMinutes??10)||0),categories:[...new Set(categories)],rows};
+    return {...plan,schemaVersion:2,warmupMinutes:Math.max(0,Number(plan.warmupMinutes??15)||0),categories:[...new Set(categories)],rows};
   }
   function attach({getState,cache,render,toast,read,persist,savePlan,getSettings,updateProgress}){
     const $=id=>document.getElementById(id);
