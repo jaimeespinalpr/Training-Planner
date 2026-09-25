@@ -7,7 +7,7 @@
     mental:{title:'Mind & focus session',name:'Competition Mindset',rows:[['Breathing reset',5],['Visualization: first score',10],['Decision game',20],['Journal + cue words',10]]}
   };
   const today = () => {const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
-  const read = (key,fallback) => {try{return JSON.parse(localStorage.getItem(key),(_key,value)=>typeof value==='string'?value.replace(/United\s+Wrestling\s+Club/gi,'Young Guns Nashville'):value) ?? fallback;}catch{return fallback;}};
+  const read = (key,fallback) => {try{return JSON.parse(localStorage.getItem(key)) ?? fallback;}catch{return fallback;}};
   const clone = x => JSON.parse(JSON.stringify(x));
   let toastTimer;
   const toast = msg => {clearTimeout(toastTimer);$('toast').textContent=msg;$('toast').classList.add('show');toastTimer=setTimeout(()=>$('toast').classList.remove('show'),4500);};
