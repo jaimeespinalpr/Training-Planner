@@ -12,7 +12,7 @@
   let toastTimer;
   const toast = msg => {clearTimeout(toastTimer);$('toast').textContent=msg;$('toast').classList.add('show');toastTimer=setTimeout(()=>$('toast').classList.remove('show'),4500);};
   const persist = (key,value) => {try{localStorage.setItem(key,JSON.stringify(value));return true;}catch{toast('Could not save in this browser. Download the PDF to keep your plan.');return false;}};
-  const fresh = track => ({track,name:tracks[track].name,date:today(),minutes:90,warmupMinutes:10,rows:clone(tracks[track].rows).map(r=>[...r,''])});
+  const fresh = track => ({track,name:tracks[track].name,date:today(),minutes:90,warmupMinutes:15,rows:clone(tracks[track].rows).map(r=>[...r,''])});
   const normalize = p => {const t=tracks[p?.track]?p.track:'wrestling';return PlannerSections.normalize({...fresh(t),...p,track:t,date:p?.date||today(),rows:Array.isArray(p?.rows)?p.rows:fresh(t).rows});};
   let state=normalize(read('tp_draft',fresh('wrestling')));
   let drafts=read('tp_tracks',{});
