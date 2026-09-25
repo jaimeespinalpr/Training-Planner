@@ -16,7 +16,7 @@
   const normalize = p => {const t=tracks[p?.track]?p.track:'wrestling';return PlannerSections.normalize({...fresh(t),...p,track:t,date:p?.date||today(),rows:Array.isArray(p?.rows)?p.rows:fresh(t).rows});};
   let state=normalize(read('tp_draft',fresh('wrestling')));
   let drafts=read('tp_tracks',{});
-  let settings={club:'Young Guns Nashville',coach:'',season:'',footer:'',color:'#0d6b4a',textColor:'#25352e',pageSize:'letter',visualSize:'standard',categoryColors:{},logo:window.YOUNG_GUNS_LOGO,...read('tp_branding',{})};
+  let settings={club:'Young Guns Nashville',coach:'',season:'',footer:'',color:'#982b2e',textColor:'#1a1a1a',pageSize:'letter',visualSize:'standard',categoryColors:{},logo:window.YOUNG_GUNS_LOGO,...read('tp_branding',{})};
   if(settings.brandVersion!=='young-guns-nashville-1'){
     settings={...settings,club:'Young Guns Nashville',logo:window.YOUNG_GUNS_LOGO,brandVersion:'young-guns-nashville-1'};
     persist('tp_branding',settings);
@@ -30,7 +30,7 @@
     sections.rememberAll();
     sections.renderRows();updateProgress();renderTemplates();renderBrand();
   }
-  function renderBrand(){ $('brandClub').textContent=settings.club||'Training Planner';$('brandLogo').hidden=!settings.logo;if(settings.logo)$('brandLogo').src=settings.logo;document.body.dataset.visualSize=settings.visualSize||'standard';document.documentElement.style.setProperty('--document-color',settings.color||'#0d6b4a');document.documentElement.style.setProperty('--document-text-color',settings.textColor||'#25352e'); }
+  function renderBrand(){ $('brandClub').textContent=settings.club||'Training Planner';$('brandLogo').hidden=!settings.logo;if(settings.logo)$('brandLogo').src=settings.logo;document.body.dataset.visualSize=settings.visualSize||'standard';document.documentElement.style.setProperty('--document-color',settings.color||'#982b2e');document.documentElement.style.setProperty('--document-text-color',settings.textColor||'#1a1a1a'); }
   function updateProgress(){sections.updateSummary();const used=state.rows.reduce((n,r)=>n+Number(r[1]),0);$('timeLabel').textContent=`${used} / ${state.minutes} min`;$('timeBar').style.width=`${state.minutes?Math.min(100,used/state.minutes*100):0}%`;}
   function collect(){state.name=$('planName').value.trim()||'Daily Training';state.date=$('planDate').value||today();state.minutes=Math.max(0,Number($('totalMinutes').value)||0);return clone(state);}
   function cache(){collect();drafts[state.track]=clone(state);persist('tp_tracks',drafts);persist('tp_draft',state);$('savedState').textContent='Saved on this device';}
@@ -62,7 +62,7 @@
   $('customForm').onsubmit=e=>{e.preventDefault();const next={...settings,logo:pendingLogo};for(const key of ['club','coach','season','footer','color'])next[key]=$('custom-'+key).value.trim();if(persist('tp_branding',next)){settings=next;renderBrand();$('customDialog').close();toast('Customization saved');}};
   let templateDraft=null;
   function openTemplateEditor(){
-    templateDraft={categories:[...state.categories],categoryColors:{...(settings.categoryColors||{})},color:settings.color||'#0d6b4a',textColor:settings.textColor||'#25352e',pageSize:settings.pageSize||'letter',visualSize:settings.visualSize||'standard'};
+    templateDraft={categories:[...state.categories],categoryColors:{...(settings.categoryColors||{})},color:settings.color||'#982b2e',textColor:settings.textColor||'#1a1a1a',pageSize:settings.pageSize||'letter',visualSize:settings.visualSize||'standard'};
     $('template-document-color').value=templateDraft.color;$('template-text-color').value=templateDraft.textColor;$('template-page-size').value=templateDraft.pageSize;$('template-visual-size').value=templateDraft.visualSize;
     renderTemplateEditor();
     $('templateDialog').showModal();
