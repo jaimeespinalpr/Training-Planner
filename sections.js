@@ -104,7 +104,7 @@
       $('rows').innerHTML=state.categories.map((category,c)=>{
         const items=state.rows.map((r,i)=>({r,i})).filter(x=>x.r[3]===category);
         const count=library.filter(x=>x.track===state.track&&key(x.category)===key(category)).length;
-        const color=getSettings?.().categoryColors?.[category]||getSettings?.().color||'#0d6b4a';
+        const color=getSettings?.().categoryColors?.[category]||getSettings?.().color||'#982b2e';
         return `<section class="exercise-section" style="--section-color:${esc(color)}"><div class="section-heading"><h3>${esc(category)}</h3><span data-section-total="${c}">${items.reduce((n,x)=>n+x.r[1],0)} min</span><button type="button" data-delete-section="${c}" aria-label="Delete section ${esc(category)}">×</button></div>${warmupPanel(state,category)}${items.map(({r,i})=>`<div class="row"><label>Exercise / point<input data-i="${i}" data-k="0" maxlength="180" value="${esc(r[0])}" placeholder="Exercise or point name"></label><label>Min<input type="number" min="0" max="1440" data-i="${i}" data-k="1" value="${r[1]}"></label><button type="button" class="remove" data-remove="${i}" aria-label="Remove exercise from session">×</button><label class="activity-notes">Details<textarea data-i="${i}" data-k="2" maxlength="5000" rows="2" placeholder="Repetitions, instructions, or coaching points…">${esc(r[2])}</textarea></label></div>`).join('')||'<p class="empty-section">Add coaching points or exercises to this section.</p>'}<div class="section-actions"><button type="button" data-add-exercise="${c}">+ Add exercise</button><button type="button" data-library="${c}">Library · ${count}</button></div></section>`;
       }).join('');
     }
