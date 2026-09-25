@@ -11,8 +11,8 @@
     const doc=new jsPDF({unit:'pt',format,compress:true,putOnlyUsedFonts:true});
     const pageHeight=doc.internal.pageSize.getHeight();
     doc.addFileToVFS('Planner.ttf',await fontData());doc.addFont('Planner.ttf','Planner','normal');doc.setFont('Planner');
-    const accent=/^#[0-9a-f]{6}$/i.test(brand.color)?brand.color:'#0d6b4a';
-    const textColor=/^#[0-9a-f]{6}$/i.test(brand.textColor)?brand.textColor:'#25352e';
+    const accent=/^#[0-9a-f]{6}$/i.test(brand.color)?brand.color:'#982b2e';
+    const textColor=/^#[0-9a-f]{6}$/i.test(brand.textColor)?brand.textColor:'#1a1a1a';
     const fontSize=brand.visualSize==='large'?13:brand.visualSize==='compact'?9:11;
     const margin=30,width=552;
     const title=doc.splitTextToSize(String(plan.name||'Daily Training'),430,{fontSize:16});
@@ -24,7 +24,7 @@
     const header=()=>{
       doc.setDrawColor(accent);doc.setLineWidth(1);doc.rect(margin,26,width,top-36);
       doc.setFontSize(16);doc.setTextColor(accent);doc.text(title,40,49);
-      doc.setFontSize(11);doc.setTextColor('#25352e');doc.text(club,40,49+title.length*19);
+      doc.setFontSize(11);doc.setTextColor('#1a1a1a');doc.text(club,40,49+title.length*19);
       doc.setFontSize(10);doc.text(`${plan.date}   |   ${trackTitle}`,40,top-36);
       doc.text(`Planned duration: ${plan.minutes} min  |  Exercises: ${plan.rows.reduce((n,r)=>n+Number(r[1]),0)} min`,40,top-21);
       if(brand.logo){if(brand.logo===window.YOUNG_GUNS_LOGO){doc.setFillColor('#080808');doc.rect(508,35,66,66,'F');}const image=doc.getImageProperties(brand.logo);const ratio=Math.min(62/image.width,62/image.height);doc.addImage(brand.logo,'PNG',510,37,image.width*ratio,image.height*ratio,'club-logo','FAST');}
@@ -33,7 +33,7 @@
     const categories=[...new Set([...(plan.categories||[]),...plan.rows.map(r=>r[3]||'Activities')])];
     for(const category of categories){
       const rows=plan.rows.filter(r=>(r[3]||'Activities')===category);if(!rows.length)continue;
-      const categoryColor=/^#[0-9a-f]{6}$/i.test(brand.categoryColors?.[category])?brand.categoryColors[category]:'#e5f0e9';
+      const categoryColor=/^#[0-9a-f]{6}$/i.test(brand.categoryColors?.[category])?brand.categoryColors[category]:'#f3e2e2';
       body.push([{content:`${category} · ${rows.reduce((n,r)=>n+Number(r[1]),0)} min`,colSpan:2,styles:{fillColor:categoryColor,textColor:accent,fontSize:12,cellPadding:8}}]);
       rows.forEach(r=>body.push([`${r[0]}${r[2]?'\n'+r[2]:''}`,`${r[1]} min`]));
     }
@@ -47,7 +47,7 @@
       rowPageBreak:'avoid',showHead:'everyPage',willDrawPage:header
     });
     const total=doc.getNumberOfPages();
-    for(let p=1;p<=total;p++){doc.setPage(p);doc.setDrawColor(accent);doc.line(30,pageHeight-50-footerHeight,doc.internal.pageSize.getWidth()-30,pageHeight-50-footerHeight);doc.setFont('Planner');doc.setFontSize(9);doc.setTextColor('#47574e');if(footer.length)doc.text(footer,doc.internal.pageSize.getWidth()/2,pageHeight-50-footerHeight+15,{align:'center'});doc.text(`Training Planner · ${p} / ${total}`,doc.internal.pageSize.getWidth()/2,pageHeight-62,{align:'center'});}
+    for(let p=1;p<=total;p++){doc.setPage(p);doc.setDrawColor(accent);doc.line(30,pageHeight-50-footerHeight,doc.internal.pageSize.getWidth()-30,pageHeight-50-footerHeight);doc.setFont('Planner');doc.setFontSize(9);doc.setTextColor('#555555');if(footer.length)doc.text(footer,doc.internal.pageSize.getWidth()/2,pageHeight-50-footerHeight+15,{align:'center'});doc.text(`Training Planner · ${p} / ${total}`,doc.internal.pageSize.getWidth()/2,pageHeight-62,{align:'center'});}
     const name=(plan.name||'Training').replace(/[\\/:*?"<>|\x00-\x1f]/g,'').trim().slice(0,90)||'Training';
     return new File([doc.output('arraybuffer')],`${name}_${plan.date}.pdf`,{type:'application/pdf'});
   }
