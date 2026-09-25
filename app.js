@@ -30,15 +30,16 @@
   function render(){
     $('trackTitle').textContent=tracks[state.track].title;
     document.querySelectorAll('.track').forEach(b=>b.classList.toggle('active',b.dataset.track===state.track));
-    $('planName').value=state.name;$('planDate').value=state.date;$('totalMinutes').value=state.minutes;
+    syncTotalMinutes();$('planName').value=state.name;$('planDate').value=state.date;
     sections.rememberAll();
     sections.renderRows();updateProgress();renderTemplates();renderBrand();
   }
   function renderBrand(){ $('brandClub').textContent=settings.club||'Training Planner';$('brandLogo').hidden=!settings.logo;if(settings.logo)$('brandLogo').src=settings.logo;document.body.dataset.visualSize=settings.visualSize||'standard';document.documentElement.style.setProperty('--document-color',settings.color||'#982b2e');document.documentElement.style.setProperty('--document-text-color',settings.textColor||'#1a1a1a'); }
+  function syncTotalMinutes(){state.minutes=state.rows.reduce((n,r)=>n+Math.max(0,Number(r[1])||0),0);$('totalMinutes').value=state.minutes;}
   function updateProgress(){sections.updateSummary();const used=state.rows.reduce((n,r)=>n+Number(r[1]),0);$('timeLabel').textContent=`${used} / ${state.minutes} min`;$('timeBar').style.width=`${state.minutes?Math.min(100,used/state.minutes*100):0}%`;}
   function collect(){state.name=$('planName').value.trim()||'Daily Training';state.date=$('planDate').value||today();state.minutes=Math.max(0,Number($('totalMinutes').value)||0);return clone(state);}
-  function cache(){collect();drafts[state.track]=clone(state);persist('tp_tracks',drafts);persist('tp_draft',state);$('savedState').textContent='Saved on this device';}
-  function save(){collect();const list=read('tp_templates',[]);const next=[clone(state),...list.filter(x=>!(x.name===state.name&&x.track===state.track&&x.date===state.date))].slice(0,100);if(persist('tp_templates',next)){cache();renderTemplates();toast('Plan saved on this device');}}
+  function cache(){syncTotalMinutes();collect();drafts[state.track]=clone(state);persist('tp_tracks',drafts);persist('tp_draft',state);$('savedState').textContent='Saved on this device';}
+  function save(){syncTotalMinutes();collect();const list=read('tp_templates',[]);const next=[clone(state),...list.filter(x=>!(x.name===state.name&&x.track===state.track&&x.date===state.date))].slice(0,100);if(persist('tp_templates',next)){cache();renderTemplates();toast('Plan saved on this device');}}
   function renderTemplates(){const list=read('tp_templates',[]);$('templates').innerHTML=list.length?list.map((p,i)=>`<div class="template"><span>${escapeHtml(p.name)}<small>${escapeHtml(p.date||'')} · ${escapeHtml(p.track||'wrestling')}</small></span><button data-load="${i}">Open</button></div>`).join(''):'<p>Saved plans will appear here.</p>';}
   $('rows').addEventListener('input',e=>{if(e.target.dataset.i===undefined)return;const k=Number(e.target.dataset.k);state.rows[Number(e.target.dataset.i)][k]=k===1?Math.max(0,Number(e.target.value)||0):e.target.value;sections.remember(state.rows[Number(e.target.dataset.i)]);updateProgress();cache();});
   $('rows').addEventListener('click',e=>{if(e.target.dataset.remove!==undefined){state.rows.splice(Number(e.target.dataset.remove),1);cache();render();}});
@@ -47,7 +48,7 @@
   $('saveBtn').onclick=save;
   $('newBtn').onclick=()=>{state=normalize({...fresh(state.track),rows:[]});state.name='New training session';render();cache();};
   $('templates').onclick=e=>{if(e.target.dataset.load!==undefined){cache();state=normalize(read('tp_templates',[])[Number(e.target.dataset.load)]);render();cache();toast('Plan opened');}};
-  ['planName','planDate','totalMinutes'].forEach(id=>$(id).addEventListener('input',()=>{cache();updateProgress();}));
+  ['planName','planDate'].forEach(id=>$(id).addEventListener('input',()=>{cache();updateProgress();}));
   function logoPreview(){ $('logoPreview').hidden=!pendingLogo;if(pendingLogo)$('logoPreview').src=pendingLogo; }
   $('customizeBtn').onclick=()=>{for(const key of ['club','coach','season','footer','color'])$('custom-'+key).value=settings[key];pendingLogo=settings.logo;$('logoFile').value='';logoPreview();$('customDialog').showModal();};
   $('cancelCustom').onclick=()=>$('customDialog').close();
