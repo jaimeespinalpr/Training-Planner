@@ -10,12 +10,19 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
  const page=await browser.newPage({viewport:{width:390,height:844}}),errors=[],failures=[];
  page.on('pageerror',e=>errors.push(String(e)));page.on('response',r=>{if(r.status()>=400)failures.push(r.url());});
  await page.goto(process.env.TP_URL||`http://127.0.0.1:${server.address().port}/`);
+ const pdfLayout=await page.evaluate(()=>PlannerPDF.layout);
+ assert.deepEqual(pdfLayout,{
+   style:'daily-schedule',
+   logo:{placement:'centered',maxWidth:132,maxHeight:92},
+   schedule:{rounded:true,labels:{title:'Daily Schedule',date:'Date',total:'Total Time'},columns:['ACTIVITY','TIME']},
+   footer:{alignment:'right'}
+ });
  await page.locator('#customizeBtn').click();
  await page.locator('#custom-club').fill('Young Guns Nashville');await page.locator('#custom-coach').fill('Jaime Espinal');await page.locator('#custom-season').fill('2026–2027');await page.locator('#custom-footer').fill('Disciplina, técnica y corazón');
  await page.locator('#logoFile').setInputFiles(path.join(__dirname,'fixtures/club-logo.png'));
  await page.waitForFunction(()=>document.querySelector('#logoPreview').src.startsWith('data:')&&!document.querySelector('#saveCustom').disabled);
  await page.locator('#saveCustom').click();await page.reload();assert.equal(await page.locator('#brandLogo').isVisible(),true);
- await page.locator('#planName').fill('Entrenamiento del día');await page.locator('#planDate').fill('2026-09-16');await page.locator('[data-i="0"][data-k="2"]').fill('Movilidad, coordinación y entrada a piernas.');
+ await page.locator('#planName').fill('Entrenamiento del día');await page.locator('#planDate').fill('2026-09-16');await page.locator('[data-i="0"][data-k="2"]').evaluate((e,value)=>{e.value=value;e.dispatchEvent(new Event('input',{bubbles:true}));},'Movilidad, coordinación y entrada a piernas.');
  await page.locator('#saveBtn').click();await page.reload();assert.equal(await page.locator('#planName').inputValue(),'Entrenamiento del día');
  await page.locator('[data-track="lifting"]').click();await page.locator('[data-track="wrestling"]').click();assert.equal(await page.locator('#planName').inputValue(),'Entrenamiento del día');
  for(const w of [320,390,768,1280]){await page.setViewportSize({width:w,height:844});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`overflow ${w}`);}

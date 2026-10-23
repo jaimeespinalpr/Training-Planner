@@ -1,55 +1,164 @@
 (() => {
   'use strict';
+
+  const layout={
+    style:'daily-schedule',
+    logo:{placement:'centered',maxWidth:132,maxHeight:92},
+    schedule:{rounded:true,labels:{title:'Daily Schedule',date:'Date',total:'Total Time'},columns:['ACTIVITY','TIME']},
+    footer:{alignment:'right'}
+  };
+
   let fontPromise;
   function fontData(){
-    if(!fontPromise)fontPromise=fetch('vendor/DejaVuSans.ttf').then(r=>{if(!r.ok)throw Error('Font unavailable');return r.arrayBuffer();}).then(b=>{let s='';const bytes=new Uint8Array(b);for(let i=0;i<bytes.length;i+=8192)s+=String.fromCharCode(...bytes.subarray(i,i+8192));return btoa(s);}).catch(e=>{fontPromise=null;throw e;});
+    if(!fontPromise)fontPromise=fetch('vendor/DejaVuSans.ttf')
+      .then(r=>{if(!r.ok)throw Error('Font unavailable');return r.arrayBuffer();})
+      .then(b=>{let s='';const bytes=new Uint8Array(b);for(let i=0;i<bytes.length;i+=8192)s+=String.fromCharCode(...bytes.subarray(i,i+8192));return btoa(s);})
+      .catch(e=>{fontPromise=null;throw e;});
     return fontPromise;
   }
+
+  function validColor(value,fallback){return /^#[0-9a-f]{6}$/i.test(value)?value:fallback;}
+  function positiveMinutes(value){return Math.max(0,Number(value)||0);}
+
   async function build(plan,brand,trackTitle){
     const {jsPDF}=window.jspdf;
     const format=brand.pageSize==='a4'?'a4':'letter';
     const doc=new jsPDF({unit:'pt',format,compress:true,putOnlyUsedFonts:true});
+    const pageWidth=doc.internal.pageSize.getWidth();
     const pageHeight=doc.internal.pageSize.getHeight();
-    doc.addFileToVFS('Planner.ttf',await fontData());doc.addFont('Planner.ttf','Planner','normal');doc.setFont('Planner');
-    const accent=/^#[0-9a-f]{6}$/i.test(brand.color)?brand.color:'#982b2e';
-    const textColor=/^#[0-9a-f]{6}$/i.test(brand.textColor)?brand.textColor:'#1a1a1a';
-    const fontSize=brand.visualSize==='large'?13:brand.visualSize==='compact'?9:11;
-    const margin=30,width=552;
-    const title=doc.splitTextToSize(String(plan.name||'Daily Training'),430,{fontSize:16});
-    const club=doc.splitTextToSize(brand.club||'Training Planner',430,{fontSize:11});
-    const footer=doc.splitTextToSize([brand.coach,brand.season,brand.footer].filter(Boolean).join(' • '),500,{fontSize:9});
-    const footerHeight=footer.length*12+24;
-    const top=Math.max(128,48+title.length*19+club.length*14+38);
-    doc.setProperties({title:plan.name,author:brand.coach||brand.club,subject:`${trackTitle} — ${plan.date}`,creator:'Training Planner'});
-    const header=()=>{
-      doc.setDrawColor(accent);doc.setLineWidth(1);doc.rect(margin,26,width,top-36);
-      doc.setFontSize(16);doc.setTextColor(accent);doc.text(title,40,49);
-      doc.setFontSize(11);doc.setTextColor('#1a1a1a');doc.text(club,40,49+title.length*19);
-      doc.setFontSize(10);doc.text(`${plan.date}   |   ${trackTitle}`,40,top-36);
-      doc.text(`Planned duration: ${plan.minutes} min  |  Exercises: ${plan.rows.reduce((n,r)=>n+Number(r[1]),0)} min`,40,top-21);
-      if(brand.logo){if(brand.logo===window.YOUNG_GUNS_LOGO){doc.setFillColor('#080808');doc.rect(508,35,66,66,'F');}const image=doc.getImageProperties(brand.logo);const ratio=Math.min(62/image.width,62/image.height);doc.addImage(brand.logo,'PNG',510,37,image.width*ratio,image.height*ratio,'club-logo','FAST');}
-    };
-    const body=[];
-    const categories=[...new Set([...(plan.categories||[]),...plan.rows.map(r=>r[3]||'Activities')])];
-    for(const category of categories){
-      const rows=plan.rows.filter(r=>(r[3]||'Activities')===category);if(!rows.length)continue;
-      const categoryColor=/^#[0-9a-f]{6}$/i.test(brand.categoryColors?.[category])?brand.categoryColors[category]:'#f3e2e2';
-      body.push([{content:`${category} · ${category==='Warm-up'?Math.max(0,Number(plan.warmupMinutes)||0):rows.reduce((n,r)=>n+Number(r[1]),0)} min`,colSpan:2,styles:{fillColor:categoryColor,textColor:accent,fontSize:12,cellPadding:8}}]);
-      rows.forEach(r=>body.push([`${r[0]}${r[2]?'\n'+r[2]:''}`,category==='Warm-up'?'':`${r[1]} min`]));
+    const font=await fontData();
+    doc.addFileToVFS('Planner.ttf',font);
+    doc.addFont('Planner.ttf','Planner','normal');
+    doc.addFont('Planner.ttf','Planner','bold');
+    doc.setFont('Planner');
+
+    const accent=validColor(brand.color,'#982b2e');
+    const textColor=validColor(brand.textColor,'#1a1a1a');
+    const fontSize=brand.visualSize==='large'?12:brand.visualSize==='compact'?8.5:10;
+    const pageMargin=28;
+    const cardLeft=pageMargin;
+    const cardWidth=pageWidth-pageMargin*2;
+    const footerLines=[brand.coach,brand.season,brand.footer].filter(Boolean).map(String);
+    const footerHeight=Math.max(46,footerLines.length*11+18);
+    const cardBottom=pageHeight-footerHeight-18;
+    const logoTop=18;
+    let logoBottom=logoTop;
+
+    if(brand.logo){
+      const image=doc.getImageProperties(brand.logo);
+      const ratio=Math.min(layout.logo.maxWidth/image.width,layout.logo.maxHeight/image.height);
+      logoBottom=logoTop+image.height*ratio;
+    }else{
+      logoBottom=58;
     }
-    doc.autoTable({
-      startY:top,margin:{top,left:margin,right:margin,bottom:footerHeight+15},
-      head:[['ACTIVITY','TIME']],
-      body:body.length?body:[['No activities','—']],
-      theme:'grid',styles:{font:'Planner',fontStyle:'normal',fontSize,cellPadding:10,lineColor:accent,lineWidth:0.35,overflow:'linebreak',textColor},
-      headStyles:{fillColor:accent,textColor:'#ffffff',fontStyle:'normal'},
-      columnStyles:{0:{cellWidth:446},1:{cellWidth:106,halign:'center'}},
-      rowPageBreak:'avoid',showHead:'everyPage',willDrawPage:header
+
+    const planTitle=doc.splitTextToSize(String(plan.name||'Practice Plan'),pageWidth-96,{fontSize:12});
+    const titleY=logoBottom+15;
+    const cardTop=Math.max(142,titleY+(planTitle.length-1)*14+14);
+    const tableTop=cardTop+56;
+    const innerLeft=cardLeft+8;
+    const innerWidth=cardWidth-16;
+    const timeWidth=92;
+    const activityWidth=innerWidth-timeWidth;
+
+    doc.setProperties({
+      title:plan.name,
+      author:brand.coach||brand.club,
+      subject:`${trackTitle} — ${plan.date}`,
+      creator:'Training Planner'
     });
-    const total=doc.getNumberOfPages();
-    for(let p=1;p<=total;p++){doc.setPage(p);doc.setDrawColor(accent);doc.line(30,pageHeight-50-footerHeight,doc.internal.pageSize.getWidth()-30,pageHeight-50-footerHeight);doc.setFont('Planner');doc.setFontSize(9);doc.setTextColor('#555555');if(footer.length)doc.text(footer,doc.internal.pageSize.getWidth()/2,pageHeight-50-footerHeight+15,{align:'center'});doc.text(`Training Planner · ${p} / ${total}`,doc.internal.pageSize.getWidth()/2,pageHeight-62,{align:'center'});}
+
+    function drawLogo(){
+      if(brand.logo){
+        const image=doc.getImageProperties(brand.logo);
+        const ratio=Math.min(layout.logo.maxWidth/image.width,layout.logo.maxHeight/image.height);
+        const width=image.width*ratio,height=image.height*ratio;
+        if(brand.logo===window.YOUNG_GUNS_LOGO){doc.setFillColor('#080808');doc.roundedRect((pageWidth-width)/2-3,logoTop-3,width+6,height+6,4,4,'F');}
+        doc.addImage(brand.logo,'PNG',(pageWidth-width)/2,logoTop,width,height,'club-logo','FAST');
+      }else{
+        doc.setFont('Planner','bold');doc.setFontSize(18);doc.setTextColor(accent);
+        doc.text(brand.club||'Training Planner',pageWidth/2,42,{align:'center'});
+      }
+      doc.setFont('Planner','bold');doc.setFontSize(12);doc.setTextColor(textColor);
+      doc.text(planTitle,pageWidth/2,titleY,{align:'center'});
+    }
+
+    function drawWatermark(){
+      if(!brand.logo||!doc.GState||!doc.setGState)return;
+      try{
+        const image=doc.getImageProperties(brand.logo);
+        const maxWidth=cardWidth*0.55,maxHeight=(cardBottom-tableTop)*0.5;
+        const ratio=Math.min(maxWidth/image.width,maxHeight/image.height);
+        const width=image.width*ratio,height=image.height*ratio;
+        doc.setGState(new doc.GState({opacity:0.035}));
+        doc.addImage(brand.logo,'PNG',(pageWidth-width)/2,tableTop+72,width,height,undefined,'FAST');
+        doc.setGState(new doc.GState({opacity:1}));
+      }catch{/* Watermark is decorative; keep the export usable if unsupported. */}
+    }
+
+    function drawScheduleFrame(){
+      doc.setDrawColor(accent);doc.setLineWidth(2);
+      doc.roundedRect(cardLeft,cardTop,cardWidth,cardBottom-cardTop,12,12,'S');
+      doc.setFont('Planner','bold');doc.setTextColor(textColor);
+      doc.setFontSize(11);doc.text(layout.schedule.labels.title,cardLeft+14,cardTop+23);
+      doc.setFontSize(8);doc.text(layout.schedule.labels.date,pageWidth/2,cardTop+14,{align:'center'});
+      doc.setFontSize(10);doc.text(String(plan.date||''),pageWidth/2,cardTop+31,{align:'center'});
+      doc.setFontSize(8);doc.text(layout.schedule.labels.total,cardLeft+cardWidth-14,cardTop+14,{align:'right'});
+      doc.setFontSize(10);doc.text(`${positiveMinutes(plan.minutes)} min`,cardLeft+cardWidth-14,cardTop+31,{align:'right'});
+      doc.setLineWidth(0.6);doc.line(innerLeft,cardTop+43,innerLeft+innerWidth,cardTop+43);
+      drawWatermark();
+    }
+
+    function drawPage(){drawLogo();drawScheduleFrame();}
+
+    const body=[];
+    const categories=[...new Set([...(plan.categories||[]),...(plan.rows||[]).map(r=>r[3]||'Activities')])];
+    for(const category of categories){
+      const rows=(plan.rows||[]).filter(r=>(r[3]||'Activities')===category);
+      if(!rows.length)continue;
+      const total=category==='Warm-up'?positiveMinutes(plan.warmupMinutes):rows.reduce((sum,row)=>sum+positiveMinutes(row[1]),0);
+      body.push([
+        {content:category,styles:{fontStyle:'bold',textColor:accent,fontSize:fontSize+1,cellPadding:{top:7,right:8,bottom:5,left:8},lineWidth:{top:0.7,right:0.25,bottom:0.2,left:0.25}}},
+        {content:`${total} min`,styles:{fontStyle:'bold',textColor:textColor,halign:'center',fontSize,cellPadding:{top:7,right:5,bottom:5,left:5},lineWidth:{top:0.7,right:0.25,bottom:0.2,left:0.25}}}
+      ]);
+      rows.forEach(row=>{
+        const minutes=positiveMinutes(row[1]);
+        const label=`${String(row[0]||'Activity')}${rows.length>1&&category!=='Warm-up'?` · ${minutes} min`:''}${row[2]?`\n${row[2]}`:''}`;
+        body.push([
+          {content:label,styles:{cellPadding:{top:6,right:8,bottom:8,left:8},lineWidth:{top:0,right:0.25,bottom:0.25,left:0.25}}},
+          {content:'',styles:{cellPadding:5,lineWidth:{top:0,right:0.25,bottom:0.25,left:0.25}}}
+        ]);
+      });
+    }
+
+    doc.autoTable({
+      startY:tableTop,
+      margin:{top:tableTop,left:innerLeft,right:innerLeft,bottom:pageHeight-cardBottom+8},
+      tableWidth:innerWidth,
+      head:[[layout.schedule.columns[0],layout.schedule.columns[1]]],
+      body:body.length?body:[['No activities','—']],
+      theme:'grid',
+      styles:{font:'Planner',fontStyle:'normal',fontSize,cellPadding:7,lineColor:accent,lineWidth:0.25,overflow:'linebreak',textColor,fillColor:false},
+      headStyles:{font:'Planner',fontStyle:'bold',fillColor:false,textColor,cellPadding:{top:7,right:8,bottom:7,left:8},lineColor:accent,lineWidth:{top:0.8,right:0.25,bottom:0.8,left:0.25}},
+      columnStyles:{0:{cellWidth:activityWidth},1:{cellWidth:timeWidth,halign:'center'}},
+      rowPageBreak:'avoid',
+      showHead:'everyPage',
+      willDrawPage:drawPage
+    });
+
+    const totalPages=doc.getNumberOfPages();
+    for(let page=1;page<=totalPages;page++){
+      doc.setPage(page);doc.setFont('Planner','normal');doc.setFontSize(8.5);doc.setTextColor('#555555');
+      doc.text(`Training Planner · ${page} / ${totalPages}`,pageMargin,pageHeight-23);
+      if(footerLines.length){
+        const footer=doc.splitTextToSize(footerLines.join('\n'),pageWidth*0.56,{fontSize:8.5});
+        doc.text(footer,pageWidth-pageMargin,pageHeight-23-(footer.length-1)*10,{align:'right'});
+      }
+    }
+
     const name=(plan.name||'Training').replace(/[\\/:*?"<>|\x00-\x1f]/g,'').trim().slice(0,90)||'Training';
     return new File([doc.output('arraybuffer')],`${name}_${plan.date}.pdf`,{type:'application/pdf'});
   }
-  window.PlannerPDF={build};
+
+  window.PlannerPDF={build,layout};
 })();
