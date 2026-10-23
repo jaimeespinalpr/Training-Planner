@@ -14,9 +14,15 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
  assert.deepEqual(pdfLayout,{
    style:'daily-schedule',
    logo:{placement:'centered',maxWidth:132,maxHeight:92},
+   watermark:{placement:'center',maxWidth:360,maxHeight:300,opacity:0.1},
    schedule:{rounded:true,labels:{title:'Daily Schedule',date:'Date',total:'Total Time'},columns:['ACTIVITY','TIME']},
    footer:{alignment:'right'}
  });
+ const watermarkPdfSize=await page.evaluate(()=>Promise.race([
+   PlannerPDF.build({name:'Watermark check',date:'2026-09-16',minutes:5,warmupMinutes:0,categories:['Test'],rows:[['Visible activity',5,'Visible notes','Test']]},{club:'Young Guns Nashville',coach:'Coach',season:'Season',footer:'',color:'#982b2e',textColor:'#1a1a1a',pageSize:'letter',visualSize:'compact',categoryColors:{},logo:window.YOUNG_GUNS_LOGO},'Wrestling practice').then(file=>file.size),
+   new Promise((_,reject)=>setTimeout(()=>reject(new Error('Official watermark export timed out')),5000))
+ ]));
+ assert(watermarkPdfSize>1000);
  await page.locator('#customizeBtn').click();
  await page.locator('#custom-club').fill('Young Guns Nashville');await page.locator('#custom-coach').fill('Jaime Espinal');await page.locator('#custom-season').fill('2026–2027');await page.locator('#custom-footer').fill('Disciplina, técnica y corazón');
  await page.locator('#logoFile').setInputFiles(path.join(__dirname,'fixtures/club-logo.png'));

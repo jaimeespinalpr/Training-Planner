@@ -4,11 +4,12 @@
   const layout={
     style:'daily-schedule',
     logo:{placement:'centered',maxWidth:132,maxHeight:92},
+    watermark:{placement:'center',maxWidth:360,maxHeight:300,opacity:0.1},
     schedule:{rounded:true,labels:{title:'Daily Schedule',date:'Date',total:'Total Time'},columns:['ACTIVITY','TIME']},
     footer:{alignment:'right'}
   };
 
-  let fontPromise;
+  let fontPromise,watermarkPromise,watermarkKey;
   function fontData(){
     if(!fontPromise)fontPromise=fetch('vendor/DejaVuSans.ttf')
       .then(r=>{if(!r.ok)throw Error('Font unavailable');return r.arrayBuffer();})
@@ -19,6 +20,29 @@
 
   function validColor(value,fallback){return /^#[0-9a-f]{6}$/i.test(value)?value:fallback;}
   function positiveMinutes(value){return Math.max(0,Number(value)||0);}
+  function officialWatermark(src,accent){
+    if(!src||src!==window.YOUNG_GUNS_LOGO)return Promise.resolve(src);
+    const key=accent+':'+src.length;
+    if(watermarkPromise&&watermarkKey===key)return watermarkPromise;
+    watermarkKey=key;
+    watermarkPromise=(async()=>{
+      const image=new Image();
+      await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=reject;image.src=src;if(image.complete&&image.naturalWidth)resolve();});
+      const scale=Math.min(1,720/Math.max(image.naturalWidth,image.naturalHeight));
+      const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(image.naturalWidth*scale));canvas.height=Math.max(1,Math.round(image.naturalHeight*scale));
+      const context=canvas.getContext('2d',{willReadFrequently:true});context.drawImage(image,0,0,canvas.width,canvas.height);
+      const pixels=context.getImageData(0,0,canvas.width,canvas.height);
+      const rgb=[parseInt(accent.slice(1,3),16),parseInt(accent.slice(3,5),16),parseInt(accent.slice(5,7),16)];
+      for(let i=0;i<pixels.data.length;i+=4){
+        const strength=Math.max(pixels.data[i],pixels.data[i+1],pixels.data[i+2]);
+        if(strength<24){pixels.data[i+3]=0;continue;}
+        pixels.data[i]=rgb[0];pixels.data[i+1]=rgb[1];pixels.data[i+2]=rgb[2];
+        pixels.data[i+3]=Math.round(pixels.data[i+3]*Math.min(1,(strength-24)/150));
+      }
+      context.putImageData(pixels,0,0);return canvas.toDataURL('image/png');
+    })().catch(()=>src);
+    return watermarkPromise;
+  }
 
   async function build(plan,brand,trackTitle){
     const {jsPDF}=window.jspdf;
@@ -34,6 +58,7 @@
 
     const accent=validColor(brand.color,'#982b2e');
     const textColor=validColor(brand.textColor,'#1a1a1a');
+    const watermarkImage=await officialWatermark(brand.logo,accent);
     const fontSize=brand.visualSize==='large'?12:brand.visualSize==='compact'?8.5:10;
     const pageMargin=28;
     const cardLeft=pageMargin;
@@ -84,14 +109,14 @@
     }
 
     function drawWatermark(){
-      if(!brand.logo||!doc.GState||!doc.setGState)return;
+      if(!watermarkImage||!doc.GState||!doc.setGState)return;
       try{
-        const image=doc.getImageProperties(brand.logo);
-        const maxWidth=cardWidth*0.55,maxHeight=(cardBottom-tableTop)*0.5;
-        const ratio=Math.min(maxWidth/image.width,maxHeight/image.height);
+        const image=doc.getImageProperties(watermarkImage);
+        const ratio=Math.min(layout.watermark.maxWidth/image.width,layout.watermark.maxHeight/image.height);
         const width=image.width*ratio,height=image.height*ratio;
-        doc.setGState(new doc.GState({opacity:0.035}));
-        doc.addImage(brand.logo,'PNG',(pageWidth-width)/2,tableTop+72,width,height,undefined,'FAST');
+        const availableHeight=cardBottom-tableTop;
+        doc.setGState(new doc.GState({opacity:layout.watermark.opacity}));
+        doc.addImage(watermarkImage,'PNG',(pageWidth-width)/2,tableTop+(availableHeight-height)/2,width,height,'watermark-logo','FAST');
         doc.setGState(new doc.GState({opacity:1}));
       }catch{/* Watermark is decorative; keep the export usable if unsupported. */}
     }
