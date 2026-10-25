@@ -12,6 +12,10 @@
 .template .template-actions{display:flex;gap:6px;flex-wrap:wrap}
 .template .template-actions button{min-height:40px;padding:8px 11px}
 .warmup-controls>summary{display:none}
+.pdf-preview-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0}
+.pdf-preview-heading h3{margin:0;font-size:16px}
+.pdf-preview-wrap{overflow:hidden;border:1px solid var(--line);border-radius:12px;background:#f2f2f2}
+.pdf-preview-wrap iframe{display:block;width:100%;height:min(58dvh,680px);min-height:280px;border:0;background:#f2f2f2}
 
 @media(max-width:650px){
   body{padding-bottom:calc(80px + env(safe-area-inset-bottom))}
@@ -43,4 +47,8 @@
   .activity-notes textarea{font-size:16px!important}
   .backup-actions>*{flex:1 1 100%}
   .template .template-actions{margin-top:8px}
+  #pdfDialog{width:calc(100% - 20px);max-height:94dvh;padding:16px}
+  .pdf-preview-heading{align-items:flex-start;flex-direction:column}
+  .pdf-preview-heading a{font-size:13px}
+  .pdf-preview-wrap iframe{height:50dvh;min-height:240px}
 }
