@@ -9,6 +9,7 @@
   const today = () => {const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
   const read = (key,fallback) => {try{return JSON.parse(localStorage.getItem(key)) ?? fallback;}catch{return fallback;}};
   const clone = x => JSON.parse(JSON.stringify(x));
+  const fitKeyboard=()=>{if(window.visualViewport)document.body.classList.toggle('keyboard-open',window.visualViewport.height<window.screen.height*.68);};window.visualViewport?.addEventListener('resize',fitKeyboard);fitKeyboard();
   let toastTimer;
   const toast = msg => {clearTimeout(toastTimer);$('toast').textContent=msg;$('toast').classList.add('show');toastTimer=setTimeout(()=>$('toast').classList.remove('show'),4500);};
   const persist = (key,value) => {try{localStorage.setItem(key,JSON.stringify(value));return true;}catch{toast('Could not save in this browser. Download the PDF to keep your plan.');return false;}};
@@ -36,19 +37,23 @@
   }
   function renderBrand(){ $('brandClub').textContent=settings.club||'Training Planner';$('brandLogo').hidden=!settings.logo;if(settings.logo)$('brandLogo').src=settings.logo;document.body.dataset.visualSize=settings.visualSize||'standard';document.documentElement.style.setProperty('--document-color',settings.color||'#982b2e');document.documentElement.style.setProperty('--document-text-color',settings.textColor||'#1a1a1a'); }
   function syncTotalMinutes(){const warmup=Math.max(0,Number(state.warmupMinutes)||0);state.minutes=state.rows.reduce((n,r)=>n+(r[3]==='Warm-up'?0:Math.max(0,Number(r[1])||0)),warmup);$('totalMinutes').value=state.minutes;}
-  function updateProgress(){sections.updateSummary();const used=state.rows.reduce((n,r)=>n+(r[3]==='Warm-up'?0:Number(r[1])||0),0)+Math.max(0,Number(state.warmupMinutes)||0);$('timeLabel').textContent=`${used} / ${state.minutes} min`;$('timeBar').style.width=`${state.minutes?Math.min(100,used/state.minutes*100):0}%`;}
+  const incompleteActivities=()=>state.rows.filter(r=>!String(r[0]||'').trim()||(r[3]!=='Warm-up'&&!(Number(r[1])>0))).length;
+  function updateProgress(){sections.updateSummary();const used=state.rows.reduce((n,r)=>n+(r[3]==='Warm-up'?0:Number(r[1])||0),0)+Math.max(0,Number(state.warmupMinutes)||0);$('timeLabel').textContent=`${used} / ${state.minutes} min`;$('timeBar').style.width=`${state.minutes?Math.min(100,used/state.minutes*100):0}%`;$('mobileTimeSummary').textContent=`${used} min`;
+    const incomplete=incompleteActivities(),warnings=$('planWarnings');warnings.textContent=incomplete?`${incomplete} ${incomplete===1?'activity needs':'activities need'} a name and a positive time before you finalize the plan.`:state.rows.length?`${state.rows.length} activities · ${used} min · ready to share.`:'Add an activity to start your plan.';warnings.classList.toggle('needs-attention',incomplete>0);
+  }
   function collect(){state.name=$('planName').value.trim()||'Daily Training';state.date=$('planDate').value||today();state.minutes=Math.max(0,Number($('totalMinutes').value)||0);return clone(state);}
-  function cache(){syncTotalMinutes();collect();drafts[state.track]=clone(state);persist('tp_tracks',drafts);persist('tp_draft',state);$('savedState').textContent='Saved on this device';}
-  function save(){syncTotalMinutes();collect();const list=read('tp_templates',[]);const next=[clone(state),...list.filter(x=>!(x.name===state.name&&x.track===state.track&&x.date===state.date))].slice(0,100);if(persist('tp_templates',next)){cache();renderTemplates();toast('Plan saved on this device');}}
-  function renderTemplates(){const list=read('tp_templates',[]);$('templates').innerHTML=list.length?list.map((p,i)=>`<div class="template"><span>${escapeHtml(p.name)}<small>${escapeHtml(p.date||'')} · ${escapeHtml(p.track||'wrestling')}</small></span><button data-load="${i}">Open</button></div>`).join(''):'<p>Saved plans will appear here.</p>';}
+  function cache(){syncTotalMinutes();collect();drafts[state.track]=clone(state);const savedTracks=persist('tp_tracks',drafts),savedDraft=persist('tp_draft',state),savedAt=new Intl.DateTimeFormat(undefined,{hour:'numeric',minute:'2-digit'}).format(new Date());$('savedState').textContent=savedTracks&&savedDraft?`Draft saved at ${savedAt} · this device`:'Draft save failed';}
+  function save(){syncTotalMinutes();collect();const list=read('tp_templates',[]);const next=[clone(state),...list.filter(x=>!(x.name===state.name&&x.track===state.track&&x.date===state.date))].slice(0,100);if(persist('tp_templates',next)){cache();$('savedState').textContent='Plan saved · this device';renderTemplates();toast('Plan saved on this device');}}
+  function renderTemplates(){const list=read('tp_templates',[]);$('templates').innerHTML=list.length?list.map((p,i)=>`<div class="template"><span>${escapeHtml(p.name)}<small>${escapeHtml(p.date||'')} · ${escapeHtml(p.track||'wrestling')}</small></span><div class="template-actions"><button type="button" data-load="${i}">Open</button><button type="button" data-duplicate="${i}">Duplicate</button></div></div>`).join(''):'<p>Saved plans will appear here.</p>';}
   $('rows').addEventListener('input',e=>{if(e.target.dataset.i===undefined)return;const k=Number(e.target.dataset.k);state.rows[Number(e.target.dataset.i)][k]=k===1?Math.max(0,Number(e.target.value)||0):e.target.value;sections.remember(state.rows[Number(e.target.dataset.i)]);cache();updateProgress();});
   $('rows').addEventListener('click',e=>{if(e.target.dataset.remove!==undefined){state.rows.splice(Number(e.target.dataset.remove),1);cache();render();}});
   document.querySelectorAll('.track').forEach(b=>b.onclick=()=>{cache();state=normalize(drafts[b.dataset.track]||fresh(b.dataset.track));render();cache();});
   // Section controls are bound by PlannerSections.
   $('saveBtn').onclick=save;
   $('newBtn').onclick=()=>{state=normalize({...fresh(state.track),rows:[]});state.name='New training session';render();cache();};
-  $('templates').onclick=e=>{if(e.target.dataset.load!==undefined){cache();state=normalize(read('tp_templates',[])[Number(e.target.dataset.load)]);render();cache();toast('Plan opened');}};
+  $('templates').onclick=e=>{const open=e.target.closest('[data-load]'),duplicate=e.target.closest('[data-duplicate]');if(open){cache();state=normalize(read('tp_templates',[])[Number(open.dataset.load)]);render();cache();toast('Plan opened');}else if(duplicate){const source=read('tp_templates',[])[Number(duplicate.dataset.duplicate)];if(!source)return;state=normalize({...clone(source),name:`${source.name||'Training plan'} (Copy)`,date:today()});render();cache();toast('Copy created. Save plan to add it to your saved plans.');}};
   ['planName','planDate'].forEach(id=>$(id).addEventListener('input',()=>{cache();updateProgress();}));
+  $('mobileAddSection').onclick=()=>$('openLibrary').click();$('mobileSavePlan').onclick=()=>$('saveBtn').click();$('mobileSavePdf').onclick=()=>$('pdfBtn').click();
   function logoPreview(){ $('logoPreview').hidden=!pendingLogo;if(pendingLogo)$('logoPreview').src=pendingLogo; }
   $('customizeBtn').onclick=()=>{for(const key of ['club','coach','season','footer','color'])$('custom-'+key).value=settings[key];pendingLogo=settings.logo;$('logoFile').value='';logoPreview();$('customDialog').showModal();};
   $('cancelCustom').onclick=()=>$('customDialog').close();
@@ -88,7 +93,7 @@
   $('pdfBtn').onclick=() => openPdf(false);
   $('shareBtn').onclick=() => openPdf(true);
   async function openPdf(sharing){
-    collect();cache();$('pdfDialog').showModal();$('pdfStatus').textContent='Preparing PDF…';$('downloadPdf').disabled=true;$('nativeShare').disabled=true;
+    collect();cache();const incomplete=incompleteActivities();if(incomplete&&!confirm(`${incomplete} ${incomplete===1?'activity is':'activities are'} missing a name or positive time. Continue and create the PDF anyway?`))return;$('pdfDialog').showModal();$('pdfStatus').textContent='Preparing PDF…';$('downloadPdf').disabled=true;$('nativeShare').disabled=true;
     try{prepared=await window.PlannerPDF.build(clone(state),clone(settings),tracks[state.track].title);if(previewUrl)URL.revokeObjectURL(previewUrl);previewUrl=URL.createObjectURL(prepared);$('pdfPreviewLink').href=previewUrl;$('pdfPreviewLink').hidden=false;$('pdfStatus').textContent=`${prepared.name} — Logo, date, activities, and footer included.`;$('downloadPdf').disabled=false;$('nativeShare').disabled=false;if(sharing)$('nativeShare').focus();}
     catch(err){prepared=null;$('pdfStatus').textContent='Could not generate the PDF. Reload the page and try again.';console.error(err);}
   }
@@ -101,6 +106,34 @@
       try{await navigator.share({files:[prepared],title:state.name});$('pdfStatus').textContent='PDF sent to the selected app.';}
       catch(e){if(e.name==='AbortError')return;$('pdfStatus').textContent='Your device could not share it. Use Download PDF.';}
     }else{download();$('pdfStatus').textContent='This browser cannot share files directly. Attach the downloaded PDF in your app.';}
+  };
+  const backupKeys=['tp_draft','tp_tracks','tp_templates','tp_branding','tp_exercise_library_v1','tp_warmup_templates'];
+  const objectValue=value=>value&&typeof value==='object'&&!Array.isArray(value);
+  function readBackupData(data){
+    const primitive=value=>value===null||['string','number'].includes(typeof value);
+    const validRow=row=>Array.isArray(row)&&row.length>=3&&row.every(primitive);
+    const validPlan=plan=>objectValue(plan)&&Array.isArray(plan.rows)&&plan.rows.every(validRow)&&(!plan.categories||Array.isArray(plan.categories)&&plan.categories.every(category=>typeof category==='string'))&&(!plan.name||typeof plan.name==='string')&&(!plan.date||typeof plan.date==='string');
+    const validLibraryItem=item=>objectValue(item)&&typeof item.name==='string'&&typeof item.category==='string'&&typeof item.track==='string'&&(item.minutes===undefined||Number.isFinite(Number(item.minutes)))&&(item.notes===undefined||typeof item.notes==='string');
+    const validWarmupTemplate=item=>objectValue(item)&&typeof item.name==='string'&&Array.isArray(item.rows)&&item.rows.every(validRow);
+    if(!objectValue(data)||!validPlan(data.tp_draft)||!objectValue(data.tp_tracks)||!Object.values(data.tp_tracks).every(validPlan)||!objectValue(data.tp_branding)||!Array.isArray(data.tp_templates)||!data.tp_templates.every(validPlan)||!Array.isArray(data.tp_exercise_library_v1)||!data.tp_exercise_library_v1.every(validLibraryItem)||!Array.isArray(data.tp_warmup_templates)||!data.tp_warmup_templates.every(validWarmupTemplate))throw new Error('Backup is missing planner data or contains invalid plan rows.');
+    if(Object.keys(data).some(key=>!backupKeys.includes(key)))throw new Error('The backup contains unsupported data.');
+    const raw={};for(const key of backupKeys){if(data[key]!==undefined)raw[key]=JSON.stringify(data[key]);}return raw;
+  }
+  $('backupBtn').onclick=()=>{$('backupStatus').textContent='';$('backupDialog').showModal();};$('closeBackup').onclick=()=>$('backupDialog').close();
+  $('exportBackup').onclick=()=>{
+    try{const defaults={tp_tracks:{},tp_templates:[],tp_exercise_library_v1:[],tp_warmup_templates:[]},data={};for(const key of backupKeys){const raw=localStorage.getItem(key);data[key]=raw===null?(defaults[key]??null):JSON.parse(raw);}const payload={format:'training-planner-backup',version:1,createdAt:new Date().toISOString(),data};
+      const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`training-planner-backup-${today()}.json`;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);$('backupStatus').textContent='Backup downloaded. Keep it in a safe place; it includes your saved plans and settings.';
+    }catch(error){$('backupStatus').textContent='Could not create the backup. Check browser storage and try again.';console.error(error);}
+  };
+  $('importBackup').onchange=async event=>{
+    const file=event.target.files?.[0];event.target.value='';if(!file)return;
+    try{if(file.size>20*1024*1024)throw new Error('Backup must be 20 MB or smaller.');const payload=JSON.parse(await file.text());if(payload.format!=='training-planner-backup'||payload.version!==1)throw new Error('Unsupported backup format or version.');const values=readBackupData(payload.data);
+      if(!confirm('Restore this backup? It will replace this browser’s current planner data. Download a backup first if you need to keep it.'))return;
+      const previous=Object.fromEntries(backupKeys.map(key=>[key,localStorage.getItem(key)]));
+      try{backupKeys.forEach(key=>localStorage.removeItem(key));for(const [key,value]of Object.entries(values))localStorage.setItem(key,value);}
+      catch(error){for(const [key,value]of Object.entries(previous)){if(value===null)localStorage.removeItem(key);else localStorage.setItem(key,value);}throw error;}
+      $('backupStatus').textContent='Backup restored. Reloading planner…';setTimeout(()=>location.reload(),400);
+    }catch(error){$('backupStatus').textContent=error.message||'Could not restore this backup. Your current data was not changed.';}
   };
   const sections=PlannerSections.attach({getState:()=>state,cache,render,toast,read,persist,savePlan:save,getSettings:()=>settings,updateProgress});
   window.TP={save,tracks};sections.rememberAll();render();cache();

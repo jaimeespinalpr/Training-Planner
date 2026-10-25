@@ -22,18 +22,18 @@ module.exports=async(page,out)=>{
  await page.reload();assert.equal(await section(intro).locator('.row').count(),2);
  assert.equal(await section(intro).locator('[data-k="0"]').first().inputValue(),'Objetivos del día del equipo');
  await section(intro).locator('[data-remove]').first().click();assert.equal(await section(intro).locator('.row').count(),1);assert.equal((await lib()).filter(x=>x.category===intro).length,introCount);
- await section(intro).locator('[data-library]').click();assert.equal(await page.locator('#libraryCategory').inputValue(),intro);assert.equal(await page.locator('.library-item').count(),introCount);
+ await section(intro).locator('[data-library]').click();assert.equal(await page.locator('#libraryCategory').count(),0,'section-specific libraries must not show a category dropdown');assert.match(await page.locator('#libraryTitle').innerText(),new RegExp(intro));assert.equal(await page.locator('.library-item').count(),introCount);
  await page.locator('#librarySearch').fill('objetivos');assert.equal(await page.locator('.library-item').count(),1);await page.locator('[data-insert-exercise]').click();await page.locator('#closeLibrary').click();assert.equal(await section(intro).locator('.row').count(),2);
  // Preserve a named custom section and its exercise across a fresh plan.
  await page.locator('#addRow').click();await page.locator('#sectionName').fill('Coordination');await page.locator('#sectionForm [type="submit"]').click();await add('Coordination','Escalera de agilidad',6,'Dos rondas.');
- await page.locator('#saveBtn').click();
+ await page.locator('#mobileSavePlan').click();
  await page.locator('#pdfBtn').click();await page.waitForFunction(()=>!document.querySelector('#downloadPdf').disabled);const pdf=page.waitForEvent('download');await page.locator('#downloadPdf').click();await(await pdf).saveAs(path.join(out,'sections.pdf'));await page.locator('#closePdf').click();
  await page.locator('#newBtn').click();assert.equal(await page.locator('.row').count(),0);
- await page.locator('#openLibrary').click();await page.locator('#libraryCategory').selectOption('Coordination');assert.equal(await page.locator('.library-item').count(),1);await page.locator('[data-insert-exercise]').click();await page.locator('#closeLibrary').click();assert.equal(await section('Coordination').locator('.row').count(),1);
+ await page.locator('#openLibrary').click();await page.locator('#librarySearch').fill('Escalera de agilidad');assert.equal(await page.locator('.library-item').count(),1);await page.locator('[data-insert-exercise]').click();await page.locator('#closeLibrary').click();assert.equal(await section('Coordination').locator('.row').count(),1);
  // Removing catalog entry does not remove plan exercise, nor resurrect on reload.
  await section('Coordination').locator('[data-library]').click();page.once('dialog',d=>d.accept());await page.locator('[data-forget-exercise]').click();await page.locator('#closeLibrary').click();await page.reload();assert.equal(await section('Coordination').locator('.row').count(),1);assert(!(await lib()).some(x=>x.name==='Escalera de agilidad'));
  // Categories are scoped to training track.
- await page.locator('[data-track="lifting"]').click();await page.locator('#openLibrary').click();await page.locator('#libraryCategory').selectOption('Introduction');assert.equal(await page.locator('.library-item').count(),0);await page.locator('#closeLibrary').click();await page.locator('[data-track="wrestling"]').click();
+ await page.locator('[data-track="lifting"]').click();await page.locator('#openLibrary').click();assert.equal(await page.locator('#libraryCategory').count(),0);await page.locator('#librarySearch').fill('Introduction');assert.equal(await page.locator('.library-item').count(),0);await page.locator('#closeLibrary').click();await page.locator('[data-track="wrestling"]').click();
  // Exercise/category deletion remains local to the plan.
  page.once('dialog',d=>d.accept());await section('Coordination').locator('[data-delete-section]').click();assert.equal(await section('Coordination').count(),0);
  for(const width of [320,390,768,1280]){await page.setViewportSize({width,height:844});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`sections overflow ${width}`);}

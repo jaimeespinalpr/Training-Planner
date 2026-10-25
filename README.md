@@ -10,10 +10,13 @@ A mobile-first training planner for Young Guns Nashville coaches.
 - Add sections and exercises with names, minutes, and coaching notes. Named exercises are saved automatically to the local library for reuse. Editing an exercise updates its library entry; previously saved plans keep their own copies.
 - Customize the club or school, coach, season, footer, document color, and club logo (PNG, JPG, or WebP, up to 10 MB). Logos are converted to PNG at a maximum dimension of 640 pixels and saved on this device.
 - Save a plan locally, then download or share a PDF. The PDF groups activities by section, shows subtotals and planned duration, and continues long tables across pages. Empty sections are omitted. File sharing uses the device's native share menu when supported; otherwise the PDF downloads for manual attachment.
+- On phones, use the collapsible warm-up controls, section jump chips, sticky action bar, and all-category exercise search to move through a plan quickly. Draft status shows when it was last saved on this device; incomplete activities are flagged before PDF creation.
+- Duplicate any saved plan to reuse a previous practice, then rename/date and save the copy as a new plan.
+- Use **Backup / restore** to download a JSON backup or restore one on another device. Restore replaces the planner data stored in that browser.
 
 ## Local data and older plans
 
-Plans, branding, and the exercise library are stored in browser localStorage, not Firebase. Clearing browser data deletes them, so keep a PDF copy of important plans. Cross-device syncing and authenticated assignments are not enabled. Firebase files in this repository are for a possible future integration and are not deployed.
+Plans, branding, and the exercise library are stored in browser localStorage, not Firebase. Clearing browser data deletes them, so use **Backup / restore** to keep a JSON copy and move it between devices. Automatic cross-device syncing and authenticated assignments are not enabled. Firebase files in this repository are placeholders for a possible future integration and are not deployed.
 
 The library uses `tp_exercise_library_v1`. Plans are stored in `tp_draft`, `tp_tracks`, and `tp_templates`, with rows shaped as `[name, minutes, details, category, libraryId]`, plus `categories` and `schemaVersion: 2`. Older plans are normalized when opened, retaining their exercise names, durations, and notes. Built-in Spanish category names from older versions are displayed in English. User-entered names and notes remain as entered.
 
