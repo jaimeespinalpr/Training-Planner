@@ -1,17 +1,715 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn() { return request.auth != null; }
-    function coach() { return signedIn() && request.auth.token.role == 'coach'; }
-    match /training_plans/{planId} {
-      allow read: if signedIn() && (resource.data.ownerUid == request.auth.uid || request.auth.uid in resource.data.assignedUids);
-      allow create, update, delete: if coach() && request.resource.data.ownerUid == request.auth.uid;
+    function signedIn() {
+      return request.auth != null;
     }
-    match /training_templates/{templateId} {
-      allow read: if signedIn();
-      allow write: if coach() && request.resource.data.ownerUid == request.auth.uid;
+
+    function isAdminEmail() {
+      return signedIn()
+        && request.auth.token.email != null
+        && request.auth.token.email == "gmunch@united-wc.com";
     }
-    match /users/{uid} { allow read: if signedIn() && request.auth.uid == uid; allow write: if signedIn() && request.auth.uid == uid; }
-    match /{document=**} { allow read, write: if false; }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function currentUser() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function currentUserRole() {
+      return signedIn() && currentUser().data.role != null
+        ? currentUser().data.role
+        : "";
+    }
+
+    function currentUserStatus() {
+      return signedIn() && currentUser().data.status != null
+        ? currentUser().data.status
+        : "";
+    }
+
+    function currentUserLinkedCoachUid() {
+      return signedIn() && currentUser().data.linkedCoachUid != null
+        ? currentUser().data.linkedCoachUid
+        : "";
+    }
+
+    function currentUserLinkedAthleteId() {
+      return signedIn() && currentUser().data.linkedAthleteId != null
+        ? currentUser().data.linkedAthleteId
+        : "";
+    }
+
+    function currentUserLinkedAthleteUid() {
+      return signedIn() && currentUser().data.linkedAthleteUid != null
+        ? currentUser().data.linkedAthleteUid
+        : "";
+    }
+
+    function currentUserAthleteName() {
+      return signedIn() && currentUser().data.athleteName != null
+        ? currentUser().data.athleteName
+        : "";
+    }
+
+    function isCoachDirectoryProfile(data) {
+      return signedIn()
+        && (
+          data.role == "coach"
+          || data.email == "gmunch@united-wc.com"
+        );
+    }
+
+    function isSelfAllowedRole(role) {
+      return role == "athlete" || role == "coach" || role == "parent";
+    }
+
+    function isAdminAllowedRole(role) {
+      return isSelfAllowedRole(role) || role == "admin";
+    }
+
+    function isAllowedViewForRole(role, view) {
+      return (
+        (role == "athlete" && view == "athlete") ||
+        (role == "coach" && view == "coach") ||
+        (role == "parent" && view == "parent") ||
+        (role == "admin" && (view == "admin" || view == "coach" || view == "athlete" || view == "parent"))
+      );
+    }
+
+    function isCoachOrAdminUser() {
+      return isAdminEmail() || currentUserRole() == "coach" || currentUserRole() == "admin";
+    }
+
+    function userDoc(uid) {
+      return get(/databases/$(database)/documents/users/$(uid));
+    }
+
+    function roleForUid(uid) {
+      return userDoc(uid).data.role != null ? userDoc(uid).data.role : "";
+    }
+
+    function statusForUid(uid) {
+      return userDoc(uid).data.status != null ? userDoc(uid).data.status : "";
+    }
+
+    function linkedCoachUidForUid(uid) {
+      return userDoc(uid).data.linkedCoachUid != null ? userDoc(uid).data.linkedCoachUid : "";
+    }
+
+    function isCoachRoleForMessaging(role) {
+      return role == "coach" || role == "admin";
+    }
+
+    function isLinkedCoachAthletePair(coachUid, athleteUid) {
+      return roleForUid(athleteUid) == "athlete"
+        && linkedCoachUidForUid(athleteUid) == coachUid;
+    }
+
+    function isLinkedCoachParentPair(coachUid, parentUid) {
+      return roleForUid(parentUid) == "parent"
+        && linkedCoachUidForUid(parentUid) == coachUid
+        && (
+          statusForUid(parentUid) == "pending_verification"
+          || statusForUid(parentUid) == "verified"
+        );
+    }
+
+    function isAllowedDirectMessagePair(uidA, uidB) {
+      return (
+        (isCoachRoleForMessaging(roleForUid(uidA)) && isCoachRoleForMessaging(roleForUid(uidB)))
+        || (isCoachRoleForMessaging(roleForUid(uidA)) && isLinkedCoachAthletePair(uidA, uidB))
+        || (isCoachRoleForMessaging(roleForUid(uidB)) && isLinkedCoachAthletePair(uidB, uidA))
+        || (isCoachRoleForMessaging(roleForUid(uidA)) && isLinkedCoachParentPair(uidA, uidB))
+        || (isCoachRoleForMessaging(roleForUid(uidB)) && isLinkedCoachParentPair(uidB, uidA))
+      );
+    }
+
+    function isAllowedDirectMessageParticipants(participantIds) {
+      return participantIds is list
+        && participantIds.size() == 2
+        && participantIds[0] != participantIds[1]
+        && isAllowedDirectMessagePair(participantIds[0], participantIds[1]);
+    }
+
+    function isPendingParentCreate() {
+      return request.resource.data.role == "parent"
+        && request.resource.data.view == "parent"
+        && request.resource.data.status == "pending_verification"
+        && (request.resource.data.linkedCoachUid == null || request.resource.data.linkedCoachUid == "")
+        && (request.resource.data.linkedCoachName == null || request.resource.data.linkedCoachName == "")
+        && (request.resource.data.linkedCoachEmail == null || request.resource.data.linkedCoachEmail == "");
+    }
+
+    function isSelfParentUpdate(uid) {
+      return isSelf(uid)
+        && resource.data.role == "parent"
+        && request.resource.data.role == "parent"
+        && request.resource.data.view == "parent"
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.linkedCoachUid == resource.data.linkedCoachUid
+        && request.resource.data.linkedCoachName == resource.data.linkedCoachName
+        && request.resource.data.linkedCoachEmail == resource.data.linkedCoachEmail
+        && (
+          resource.data.status != "verified"
+          || (
+            request.resource.data.athleteName == resource.data.athleteName
+            && request.resource.data.linkedAthleteId == resource.data.linkedAthleteId
+          )
+        );
+    }
+
+    function isCoachParentVerificationUpdate(uid) {
+      return signedIn()
+        && !isSelf(uid)
+        && isCoachOrAdminUser()
+        && resource.data.role == "parent"
+        && request.resource.data.role == "parent"
+        && request.resource.data.view == "parent"
+        && request.resource.data.user_id == resource.data.user_id
+        && request.resource.data.email == resource.data.email
+        && (
+          request.resource.data.status == "pending_verification"
+          || request.resource.data.status == "verified"
+          || request.resource.data.status == "rejected"
+        )
+        && (
+          isAdminEmail()
+          || request.resource.data.linkedCoachUid == request.auth.uid
+          || resource.data.linkedCoachUid == request.auth.uid
+        );
+    }
+
+    function isVerifiedLinkedParent(coachUid) {
+      return signedIn()
+        && currentUserRole() == "parent"
+        && currentUserStatus() == "verified"
+        && currentUserLinkedCoachUid() == coachUid;
+    }
+
+    function isLinkedAthleteForCoach(coachUid) {
+      return signedIn()
+        && currentUserRole() == "athlete"
+        && currentUserLinkedCoachUid() == coachUid
+        && currentUserLinkedAthleteId() != "";
+    }
+
+    function isLinkedAthleteRecord(athleteId) {
+      return signedIn()
+        && currentUserRole() == "athlete"
+        && currentUserLinkedAthleteId() != ""
+        && athleteId == currentUserLinkedAthleteId();
+    }
+
+    function canAccessMessageThread(data) {
+      return signedIn()
+        && data.participantIds is list
+        && request.auth.uid in data.participantIds
+        && isAllowedDirectMessageParticipants(data.participantIds);
+    }
+
+    function canRepairLegacyMessageThread(data) {
+      return signedIn()
+        && (
+          canAccessMessageThread(data)
+          || (data.participantIds is list && request.auth.uid in data.participantIds)
+          || data.coachUid == request.auth.uid
+          || data.userUid == request.auth.uid
+        );
+    }
+
+    function canRepairLegacyMessageParticipants() {
+      return request.resource.data.participantIds is list
+        && request.resource.data.participantIds.size() == 2
+        && resource.data.coachUid is string
+        && resource.data.userUid is string
+        && resource.data.coachUid in request.resource.data.participantIds
+        && resource.data.userUid in request.resource.data.participantIds;
+    }
+
+    function assignmentTargetsCurrentAthlete(data) {
+      return signedIn()
+        && currentUserRole() == "athlete"
+        && (
+          (data.athleteIds is list && currentUserLinkedAthleteId() in data.athleteIds)
+          || (data.athleteUids is list && request.auth.uid in data.athleteUids)
+          || data.assigneeId == currentUserLinkedAthleteId()
+        );
+    }
+
+    function announcementTargetsCurrentAthlete(data) {
+      return signedIn()
+        && currentUserRole() == "athlete"
+        && (
+          data.allAthletes == true
+          || (data.athleteUids is list && request.auth.uid in data.athleteUids)
+          || (data.athleteIds is list && currentUserLinkedAthleteId() in data.athleteIds)
+        );
+    }
+
+    function announcementTargetsCurrentParent(data) {
+      return signedIn()
+        && currentUserRole() == "parent"
+        && currentUserStatus() == "verified"
+        && (
+          data.allParents == true
+          || (data.parentUids is list && request.auth.uid in data.parentUids)
+          || (data.athleteUids is list && currentUserLinkedAthleteUid() in data.athleteUids)
+          || (data.athleteIds is list && currentUserLinkedAthleteId() in data.athleteIds)
+        );
+    }
+
+    // User profiles: self-manage + global admin access for account administration.
+    match /users/{uid} {
+      allow read: if isSelf(uid)
+        || isAdminEmail()
+        || isCoachOrAdminUser()
+        || isCoachDirectoryProfile(resource.data)
+        || (signedIn() && resource.data.role == "athlete")
+        || (signedIn() && resource.data.role == "parent");
+      allow create: if (
+        isAdminEmail()
+        && isAdminAllowedRole(request.resource.data.role)
+        && isAllowedViewForRole(request.resource.data.role, request.resource.data.view)
+      ) || (
+        isSelf(uid)
+        && isSelfAllowedRole(request.resource.data.role)
+        && isAllowedViewForRole(request.resource.data.role, request.resource.data.view)
+        && (
+          request.resource.data.role != "parent"
+          || isPendingParentCreate()
+        )
+      );
+      allow update: if (
+        isAdminEmail()
+        && isAdminAllowedRole(request.resource.data.role)
+        && isAllowedViewForRole(request.resource.data.role, request.resource.data.view)
+      ) || (
+        isCoachOrAdminUser()
+        && resource.data.role == "athlete"
+        && request.resource.data.role == "athlete"
+        && request.resource.data.user_id == resource.data.user_id
+        && request.resource.data.email == resource.data.email
+        && (
+          isAdminEmail()
+          || currentUserRole() == "admin"
+          || resource.data.linkedCoachUid == request.auth.uid
+          || request.resource.data.linkedCoachUid == request.auth.uid
+        )
+      ) || (
+        isSelf(uid)
+        && isSelfAllowedRole(request.resource.data.role)
+        && isAllowedViewForRole(request.resource.data.role, request.resource.data.view)
+        && resource.data.role == request.resource.data.role
+        && (
+          request.resource.data.role != "parent"
+          || isSelfParentUpdate(uid)
+        )
+      ) || isCoachParentVerificationUpdate(uid);
+      allow delete: if isAdminEmail();
+
+      match /client_state/{docId} {
+        allow read, write: if isSelf(uid) || isAdminEmail();
+      }
+    }
+
+    match /message_threads/{threadId} {
+      allow get: if isAdminEmail() || canRepairLegacyMessageThread(resource.data);
+      allow list: if isAdminEmail() || canRepairLegacyMessageThread(resource.data);
+      allow create: if signedIn()
+        && isAllowedDirectMessageParticipants(request.resource.data.participantIds)
+        && request.auth.uid in request.resource.data.participantIds;
+      allow update: if signedIn()
+        && isAllowedDirectMessageParticipants(request.resource.data.participantIds)
+        && (
+          request.resource.data.participantIds == resource.data.participantIds
+          || canRepairLegacyMessageParticipants()
+        )
+        && request.auth.uid in request.resource.data.participantIds
+        && (isAdminEmail() || canRepairLegacyMessageThread(resource.data));
+      allow delete: if isAdminEmail() || canRepairLegacyMessageThread(resource.data);
+
+      match /messages/{messageId} {
+        allow get: if isAdminEmail() || (
+          canRepairLegacyMessageThread(get(/databases/$(database)/documents/message_threads/$(threadId)).data)
+        );
+        allow list: if isAdminEmail() || (
+          canRepairLegacyMessageThread(get(/databases/$(database)/documents/message_threads/$(threadId)).data)
+        );
+        allow create: if signedIn()
+          && canRepairLegacyMessageThread(get(/databases/$(database)/documents/message_threads/$(threadId)).data)
+          && request.resource.data.senderUid == request.auth.uid
+          && request.resource.data.threadId == threadId
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 1000;
+        allow update: if signedIn()
+          && canRepairLegacyMessageThread(get(/databases/$(database)/documents/message_threads/$(threadId)).data)
+          && resource.data.threadId == threadId
+          && request.resource.data.threadId == resource.data.threadId
+          && request.resource.data.senderUid == resource.data.senderUid
+          && request.resource.data.text == resource.data.text
+          && request.resource.data.read == true
+          && request.resource.data.readByUid == request.auth.uid
+          && resource.data.senderUid != request.auth.uid
+          && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+            "read",
+            "readByUid",
+            "readAt",
+            "serverReadAt"
+          ]);
+        allow delete: if isAdminEmail() || (
+          canRepairLegacyMessageThread(get(/databases/$(database)/documents/message_threads/$(threadId)).data)
+        );
+      }
+    }
+
+    // Shared media tree is collaborative between authenticated users.
+    match /shared_app/{docId} {
+      allow read, write: if signedIn();
+      match /{document=**} {
+        allow read, write: if signedIn();
+      }
+    }
+
+    match /coach_workspaces/{coachUid} {
+      allow read, write: if isAdminEmail() || isSelf(coachUid);
+
+      match /plans/{planId} {
+        allow read: if isAdminEmail()
+          || isSelf(coachUid)
+          || isVerifiedLinkedParent(coachUid)
+          || isLinkedAthleteForCoach(coachUid);
+        allow write: if isAdminEmail() || isSelf(coachUid);
+      }
+
+      match /templates/{templateId} {
+        allow read, write: if isAdminEmail() || isSelf(coachUid);
+      }
+
+      match /assignments/{assignmentId} {
+        allow read: if isAdminEmail()
+          || isSelf(coachUid)
+          || isVerifiedLinkedParent(coachUid)
+          || isLinkedAthleteForCoach(coachUid);
+        allow create: if isAdminEmail() || isSelf(coachUid);
+        allow update: if isAdminEmail()
+          || isSelf(coachUid)
+          || (
+            isLinkedAthleteForCoach(coachUid)
+            && assignmentTargetsCurrentAthlete(resource.data)
+            && assignmentTargetsCurrentAthlete(request.resource.data)
+            && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+              "status",
+              "updatedAt",
+              "startedAt",
+              "completedAt",
+              "athleteChecklist",
+              "athleteLogUid",
+              "athleteLogName",
+              "completionResultType",
+              "completionResultLabel",
+              "completionResultSummary",
+              "completionResultScore",
+              "completionResultReactionMs",
+              "completionResultAccuracy",
+              "completionResultAt",
+              "notificationStatus",
+              "completionNotifiedAt",
+              "completionNotifiedByUid",
+              "completionNotifiedByName",
+              "discussion",
+              "lastCommentAt",
+              "lastCommentAtIso",
+              "lastCommentText",
+              "lastCommentBy",
+              "lastCommentByUid",
+              "lastCommentByRole"
+            ])
+          );
+        allow delete: if isAdminEmail() || isSelf(coachUid);
+      }
+
+      match /groups/{groupId} {
+        allow read, write: if isAdminEmail() || isSelf(coachUid);
+      }
+
+      match /calendar_entries/{entryId} {
+        allow read, write: if isAdminEmail() || isSelf(coachUid);
+      }
+
+      match /athletes/{athleteId} {
+        allow read: if isAdminEmail()
+          || isSelf(coachUid)
+          || isVerifiedLinkedParent(coachUid)
+          || isLinkedAthleteRecord(athleteId);
+        allow write: if isAdminEmail() || isSelf(coachUid);
+      }
+
+      match /coach_notes/{noteId} {
+        allow read: if isAdminEmail()
+          || isSelf(coachUid)
+          || (
+            isVerifiedLinkedParent(coachUid)
+            && (
+              resource.data.athleteId == currentUserLinkedAthleteId()
+              || resource.data.athleteName == currentUserAthleteName()
+            )
+          )
+          || isLinkedAthleteForCoach(coachUid);
+        allow write: if isAdminEmail() || isSelf(coachUid);
+      }
+
+      match /journal_entries/{entryId} {
+        allow read: if isAdminEmail()
+          || isSelf(coachUid)
+          || (
+            isVerifiedLinkedParent(coachUid)
+            && (
+              resource.data.athleteId == currentUserLinkedAthleteId()
+              || resource.data.athleteName == currentUserAthleteName()
+            )
+          )
+          || isLinkedAthleteForCoach(coachUid);
+        allow create: if isAdminEmail()
+          || isSelf(coachUid)
+          || (
+            isLinkedAthleteForCoach(coachUid)
+            && request.resource.data.athleteId == currentUserLinkedAthleteId()
+            && request.resource.data.athleteUid == request.auth.uid
+          );
+        allow update: if isAdminEmail()
+          || isSelf(coachUid)
+          || (
+            isLinkedAthleteForCoach(coachUid)
+            && resource.data.athleteId == currentUserLinkedAthleteId()
+            && request.resource.data.athleteId == currentUserLinkedAthleteId()
+            && request.resource.data.athleteUid == request.auth.uid
+          );
+        allow delete: if isAdminEmail() || isSelf(coachUid);
+      }
+
+      match /completion_status/{athleteId} {
+        allow read: if isAdminEmail()
+          || isSelf(coachUid)
+          || (
+            isVerifiedLinkedParent(coachUid)
+            && athleteId == currentUserLinkedAthleteId()
+          )
+          || isLinkedAthleteForCoach(coachUid);
+        allow write: if isAdminEmail() || isSelf(coachUid);
+      }
+
+      match /match_analysis/{analysisId} {
+        allow read: if isAdminEmail()
+          || isSelf(coachUid)
+          || (
+            isVerifiedLinkedParent(coachUid)
+            && (
+              resource.data.athleteId == currentUserLinkedAthleteId()
+              || resource.data.athleteName == currentUserAthleteName()
+            )
+          )
+          || isLinkedAthleteForCoach(coachUid);
+        allow write: if isAdminEmail() || isSelf(coachUid);
+      }
+
+      match /parent_scouting/{entryId} {
+        allow read: if isAdminEmail()
+          || isSelf(coachUid)
+          || (
+            isVerifiedLinkedParent(coachUid)
+            && resource.data.parentUid == request.auth.uid
+          );
+        allow create: if isAdminEmail()
+          || isSelf(coachUid)
+          || (
+            isVerifiedLinkedParent(coachUid)
+            && request.resource.data.parentUid == request.auth.uid
+            && request.resource.data.athleteId == currentUserLinkedAthleteId()
+            && request.resource.data.athleteName == currentUserAthleteName()
+          );
+        allow update: if isAdminEmail()
+          || isSelf(coachUid)
+          || (
+            isVerifiedLinkedParent(coachUid)
+            && resource.data.parentUid == request.auth.uid
+            && request.resource.data.parentUid == request.auth.uid
+            && request.resource.data.athleteId == currentUserLinkedAthleteId()
+            && request.resource.data.athleteName == currentUserAthleteName()
+          );
+        allow delete: if isAdminEmail() || isSelf(coachUid);
+      }
+
+      match /announcements/{announcementId} {
+        allow read: if isAdminEmail()
+          || isSelf(coachUid)
+          || (
+            isLinkedAthleteForCoach(coachUid)
+            && announcementTargetsCurrentAthlete(resource.data)
+          )
+          || (
+            isVerifiedLinkedParent(coachUid)
+            && announcementTargetsCurrentParent(resource.data)
+          );
+        allow create: if isAdminEmail() || isSelf(coachUid);
+        allow update: if isAdminEmail()
+          || isSelf(coachUid)
+          || (
+            signedIn()
+            && !isSelf(coachUid)
+            && (
+              (
+                isLinkedAthleteForCoach(coachUid)
+                && announcementTargetsCurrentAthlete(resource.data)
+              )
+              || (
+                isVerifiedLinkedParent(coachUid)
+                && announcementTargetsCurrentParent(resource.data)
+              )
+            )
+            && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+              "readByUids",
+              "updatedAt"
+            ])
+            && request.resource.data.readByUids is list
+            && (resource.data.readByUids == null || request.resource.data.readByUids.hasAll(resource.data.readByUids))
+            && request.auth.uid in request.resource.data.readByUids
+          );
+        allow delete: if isAdminEmail() || isSelf(coachUid);
+      }
+
+      match /assignment_instances/{instanceId} {
+        allow read: if isAdminEmail()
+          || isSelf(coachUid)
+          || isVerifiedLinkedParent(coachUid)
+          || isLinkedAthleteForCoach(coachUid);
+        allow write: if isAdminEmail() || isSelf(coachUid);
+      }
+
+      match /assignment_events/{eventId} {
+        allow read: if isAdminEmail()
+          || isSelf(coachUid)
+          || isVerifiedLinkedParent(coachUid)
+          || isLinkedAthleteForCoach(coachUid);
+        allow write: if isAdminEmail() || isSelf(coachUid);
+      }
+
+      match /notifications/{notificationId} {
+        allow read: if isAdminEmail()
+          || isSelf(coachUid)
+          || (
+            signedIn()
+            && resource.data.recipientUids is list
+            && request.auth.uid in resource.data.recipientUids
+          );
+        allow create: if isAdminEmail() || isSelf(coachUid);
+        allow update: if isAdminEmail()
+          || isSelf(coachUid)
+          || (
+            signedIn()
+            && resource.data.recipientUids is list
+            && request.auth.uid in resource.data.recipientUids
+            && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+              "readByUids",
+              "updatedAt"
+            ])
+            && request.resource.data.readByUids is list
+            && (resource.data.readByUids == null || request.resource.data.readByUids.hasAll(resource.data.readByUids))
+            && request.auth.uid in request.resource.data.readByUids
+          );
+        allow delete: if isAdminEmail() || isSelf(coachUid);
+      }
+
+      match /media_assets/{assetId} {
+        allow read: if isAdminEmail()
+          || isSelf(coachUid)
+          || isVerifiedLinkedParent(coachUid)
+          || isLinkedAthleteForCoach(coachUid);
+        allow write: if isAdminEmail() || isSelf(coachUid);
+      }
+
+      match /training_logs/{logId} {
+        allow read: if isAdminEmail()
+          || isSelf(coachUid)
+          || isVerifiedLinkedParent(coachUid)
+          || isLinkedAthleteForCoach(coachUid);
+        allow create: if isAdminEmail()
+          || isSelf(coachUid)
+          || (
+            isLinkedAthleteForCoach(coachUid)
+            && request.resource.data.athleteUid == request.auth.uid
+          );
+        allow update: if isAdminEmail()
+          || isSelf(coachUid)
+          || (
+            isLinkedAthleteForCoach(coachUid)
+            && resource.data.athleteUid == request.auth.uid
+            && request.resource.data.athleteUid == request.auth.uid
+          );
+        allow delete: if isAdminEmail() || isSelf(coachUid);
+      }
+
+      match /{document=**} {
+        allow read, write: if isAdminEmail() || isSelf(coachUid);
+      }
+    }
+
+    // Training Planner: private opaque JSON snapshots. JSON is validated in the app;
+    // it never contains authorization fields used by these rules.
+    // versions/{UUID}: immutable schemaVersion=1, SHA256 hash, byteLength<=20MiB,
+    // chunkCount<=160, createdAt=server time. chunks/{index}: immutable base64 text.
+    // state/head: version UUID, monotonic revision, updatedAt=server time.
+    match /trainingPlanner/{uid} {
+      function isOwner() { return request.auth != null && request.auth.uid == uid; }
+      function validId(id) { return id is string && id.matches('^[a-f0-9-]{36}$'); }
+      function validVersion(d) {
+        return d.keys().hasAll(['schemaVersion','hash','byteLength','chunkCount','createdAt'])
+          && d.keys().hasOnly(['schemaVersion','hash','byteLength','chunkCount','createdAt'])
+          && d.schemaVersion == 1 && d.hash is string && d.hash.matches('^[a-f0-9]{64}$')
+          && d.byteLength is int && d.byteLength > 0 && d.byteLength <= 20971520
+          && d.chunkCount is int && d.chunkCount > 0 && d.chunkCount <= 160
+          && d.createdAt == request.time;
+      }
+      function validHead(d) {
+        return d.keys().hasAll(['version','revision','updatedAt'])
+          && d.keys().hasOnly(['version','revision','updatedAt'])
+          && validId(d.version) && d.revision is int && d.revision > 0 && d.revision <= 2147483647
+          && d.updatedAt == request.time
+          && exists(/databases/$(database)/documents/trainingPlanner/$(uid)/versions/$(d.version));
+      }
+      match /state/{stateId} {
+        allow read: if isOwner() && stateId == 'head';
+        allow create: if isOwner() && stateId == 'head' && validHead(request.resource.data) && request.resource.data.revision == 1;
+        allow update: if isOwner() && stateId == 'head' && validHead(request.resource.data)
+          && request.resource.data.revision == resource.data.revision + 1;
+        allow delete: if false;
+      }
+      match /versions/{version} {
+        allow read: if isOwner();
+        allow create: if isOwner() && validId(version) && validVersion(request.resource.data);
+        allow update, delete: if false;
+        match /chunks/{chunk} {
+          allow read: if isOwner();
+          allow create: if isOwner() && validId(version)
+            && !exists(/databases/$(database)/documents/trainingPlanner/$(uid)/versions/$(version))
+            && request.resource.data.keys().hasAll(['index','text'])
+            && request.resource.data.keys().hasOnly(['index','text'])
+            && request.resource.data.index is int && request.resource.data.index >= 0 && request.resource.data.index < 160
+            && chunk == string(request.resource.data.index)
+            && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 180000
+            && request.resource.data.text.matches('^[A-Za-z0-9+/=]+$');
+          allow update, delete: if false;
+        }
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
   }
 }

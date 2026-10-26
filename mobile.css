@@ -52,3 +52,5 @@
   .pdf-preview-heading a{font-size:13px}
   .pdf-preview-wrap iframe{height:50dvh;min-height:240px}
 }
+
+.sync-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 0;font-size:.85rem}.sync-bar span{flex:1;min-width:180px}#syncDialog{max-width:640px}#syncHistory{max-height:240px;overflow:auto}#syncHistory button{white-space:normal;text-align:left}

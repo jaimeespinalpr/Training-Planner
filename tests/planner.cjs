@@ -3,10 +3,10 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
 (async()=>{
  const root=path.resolve(__dirname,'..'),out=process.env.TP_ARTIFACTS||'/tmp/training-planner-review';fs.mkdirSync(out,{recursive:true});
  const workflow=fs.readFileSync(path.join(root,'.github/workflows/pages.yml'),'utf8');assert.match(workflow,/cp index\.html app\.js sections\.js pdf-export\.js styles\.css document-ui\.css mobile\.css _site\//,'deployment must publish the responsive stylesheet');
- const types={'.html':'text/html','.js':'text/javascript','.css':'text/css','.ttf':'font/ttf'};
+ const types={'.html':'text/html','.js':'text/javascript','.mjs':'text/javascript','.css':'text/css','.ttf':'font/ttf'};
  const server=http.createServer((req,res)=>{const file=path.join(root,new URL(req.url,'http://localhost').pathname.replace(/^\//,'')||'index.html');try{res.setHeader('Content-Type',types[path.extname(file)]||'application/octet-stream');res.end(fs.readFileSync(file));}catch{res.statusCode=404;res.end();}});
  await new Promise(r=>server.listen(0,'127.0.0.1',r));
- const browser=await chromium.launch({executablePath:'/usr/bin/google-chrome',headless:true,args:['--no-sandbox','--disable-renderer-accessibility']});
+ const browser=await chromium.launch({executablePath:process.env.CHROME_PATH||undefined,headless:true,args:['--no-sandbox','--disable-renderer-accessibility']});
  try{
  const page=await browser.newPage({viewport:{width:390,height:844}}),errors=[],failures=[];
  page.on('pageerror',e=>errors.push(String(e)));page.on('response',r=>{if(r.status()>=400)failures.push(r.url());});
@@ -26,7 +26,7 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),
  assert.equal(await page.locator('.exercise-section').first().evaluate(e=>e.classList.contains('is-empty')),false);
  await page.reload();
  assert.match(await page.locator('#planWarnings').innerText(),/needs? a name and a positive time/i);
-  await page.locator('#mobileAddSection').click();assert.equal(await page.locator('#libraryDialog').evaluate(e=>e.open),true);assert.equal(await page.locator('#libraryCategory').count(),0,'the category dropdown must not be shown');await page.locator('#librarySearch').fill('Light jog');assert.equal(await page.locator('.library-item').count(),2);assert.match(await page.locator('.library-item').nth(0).innerText(),/Warm-up|Cool Down/i);await page.locator('#closeLibrary').click();
+  await page.locator('#mobileAddSection').click();assert.equal(await page.locator('#libraryDialog').evaluate(e=>e.open),true);assert.equal(await page.locator('#libraryCategory').count(),0,'the category dropdown must not be shown');await page.locator('#librarySearch').fill('Light jog');assert.equal(await page.locator('.library-item').count(),1);assert.match(await page.locator('.library-item').nth(0).innerText(),/Warm-up|Cool Down/i);await page.locator('#closeLibrary').click();
   await page.locator('#backupBtn').click();
  const backupDownload=page.waitForEvent('download');await page.locator('#exportBackup').click();
  const backupPath=path.join(out,'planner-backup.json');await(await backupDownload).saveAs(backupPath);

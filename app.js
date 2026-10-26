@@ -12,7 +12,7 @@
   const fitKeyboard=()=>{if(window.visualViewport)document.body.classList.toggle('keyboard-open',window.visualViewport.height<window.screen.height*.68);};window.visualViewport?.addEventListener('resize',fitKeyboard);fitKeyboard();
   let toastTimer;
   const toast = msg => {clearTimeout(toastTimer);$('toast').textContent=msg;$('toast').classList.add('show');toastTimer=setTimeout(()=>$('toast').classList.remove('show'),4500);};
-  const persist = (key,value) => {try{localStorage.setItem(key,JSON.stringify(value));return true;}catch{toast('Could not save in this browser. Download the PDF to keep your plan.');return false;}};
+  const persist = (key,value) => {try{localStorage.setItem(key,JSON.stringify(value));window.dispatchEvent(new Event('tp-data-changed'));return true;}catch{toast('Could not save in this browser. Download the PDF to keep your plan.');return false;}};
   const fresh = track => ({track,name:tracks[track].name,date:today(),minutes:90,warmupMinutes:15,rows:clone(tracks[track].rows).map(r=>[...r,''])});
   const normalize = p => {const t=tracks[p?.track]?p.track:'wrestling';return PlannerSections.normalize({...fresh(t),...p,track:t,date:p?.date||today(),rows:Array.isArray(p?.rows)?p.rows:fresh(t).rows});};
   let state=normalize(read('tp_draft',fresh('wrestling')));
@@ -129,6 +129,7 @@
     const file=event.target.files?.[0];event.target.value='';if(!file)return;
     try{if(file.size>20*1024*1024)throw new Error('Backup must be 20 MB or smaller.');const payload=JSON.parse(await file.text());if(payload.format!=='training-planner-backup'||payload.version!==1)throw new Error('Unsupported backup format or version.');const values=readBackupData(payload.data);
       if(!confirm('Restore this backup? It will replace this browser’s current planner data. Download a backup first if you need to keep it.'))return;
+      await window.PlannerSync?.backupLocal('before-file-restore');window.PlannerSync?.pause();localStorage.removeItem('tp_cloud_link_v1');
       const previous=Object.fromEntries(backupKeys.map(key=>[key,localStorage.getItem(key)]));
       try{backupKeys.forEach(key=>localStorage.removeItem(key));for(const [key,value]of Object.entries(values))localStorage.setItem(key,value);}
       catch(error){for(const [key,value]of Object.entries(previous)){if(value===null)localStorage.removeItem(key);else localStorage.setItem(key,value);}throw error;}
@@ -136,5 +137,5 @@
     }catch(error){$('backupStatus').textContent=error.message||'Could not restore this backup. Your current data was not changed.';}
   };
   const sections=PlannerSections.attach({getState:()=>state,cache,render,toast,read,persist,savePlan:save,getSettings:()=>settings,updateProgress});
-  window.TP={save,tracks};sections.rememberAll();render();cache();
+  window.TP={save,tracks,validateBackup:readBackupData};sections.rememberAll();render();cache();
 })();

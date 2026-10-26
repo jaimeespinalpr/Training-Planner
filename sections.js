@@ -32,22 +32,7 @@
     const $=id=>document.getElementById(id);
     let library=read('tp_exercise_library_v1',[]);if(!Array.isArray(library))library=[];
     library=library.map(item=>({...item,category:categoryForTrack(item.category,item.track)}));
-    const removedTechniqueNames=new Set(['partner walk-through reps']);
-    const keptTechniqueLibrary=library.filter(item=>!(item.track==='wrestling'&&key(item.category)==='introduction of new techniques or drills'&&removedTechniqueNames.has(key(item.name))));
-    if(keptTechniqueLibrary.length!==library.length){library=keptTechniqueLibrary;persist('tp_exercise_library_v1',library);}
-    library=library.map(item=>item.track==='wrestling'&&key(item.category)==='introduction of new techniques or drills'&&key(item.name)==='overhook entry'?{...item,name:'Underhook and Overhook entry'}:item);
-    persist('tp_exercise_library_v1',library);
-    library=library.map(item=>item.track==='wrestling'&&key(item.category)==='introduction of new techniques or drills'&&key(item.name)==='inside tie setup'?{...item,name:'Inside and Outside Tie Setup'}:item);
-    persist('tp_exercise_library_v1',library);
-    const removedLegacyTechniqueNames=new Set(['back trip setup','coach command technique reps']);
-    const keptLegacyTechniqueLibrary=library.filter(item=>!(item.track==='wrestling'&&key(item.category)==='introduction of new techniques or drills'&&removedLegacyTechniqueNames.has(key(item.name))));
-    if(keptLegacyTechniqueLibrary.length!==library.length){library=keptLegacyTechniqueLibrary;persist('tp_exercise_library_v1',library);}
-    const removedRequestedNames=new Set(['slow motion technique reps','step-slide in stance']);
-    const keptRequestedLibrary=library.filter(item=>!(item.track==='wrestling'&&key(item.category)==='introduction of new techniques or drills'&&removedRequestedNames.has(key(item.name))));
-    if(keptRequestedLibrary.length!==library.length){library=keptRequestedLibrary;persist('tp_exercise_library_v1',library);}
-    const removedWarmupNames=new Set(['circles around the mat','jumping jacks','light jog','light shadow wrestling']);
-    const keptLibrary=library.filter(item=>!(item.track==='wrestling'&&key(item.category)==='warm-up'&&removedWarmupNames.has(key(item.name))));
-    if(keptLibrary.length!==library.length){library=keptLibrary;persist('tp_exercise_library_v1',library);}
+    // Preserve saved exercise entries during restore and cloud migration.
     const starterItems=[['Attendance Check','0',''],['Joke of the Day','0',''],['Goals','0','']];
     let seeded=false;
     for(const [name,minutes,notes] of starterItems){

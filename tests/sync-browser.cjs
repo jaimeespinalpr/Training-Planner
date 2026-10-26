@@ -1,0 +1,40 @@
+const {chromium}=require('playwright');
+const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+(async()=>{
+ const root=path.resolve(__dirname,'..'),data=JSON.parse(fs.readFileSync(process.env.TP_BACKUP,'utf8')).data,suffix=Date.now(),ownerEmail=`owner-${suffix}@example.test`,otherEmail=`other-${suffix}@example.test`;
+ const types={'.html':'text/html','.js':'text/javascript','.mjs':'text/javascript','.css':'text/css','.ttf':'font/ttf'};
+ const server=http.createServer((req,res)=>{const file=path.join(root,new URL(req.url,'http://localhost').pathname.replace(/^\//,'')||'index.html');try{res.setHeader('Content-Type',types[path.extname(file)]||'application/octet-stream');res.end(fs.readFileSync(file));}catch{res.statusCode=404;res.end();}});await new Promise(r=>server.listen(0,'127.0.0.1',r));
+ const browser=await chromium.launch({executablePath:process.env.CHROME_PATH||undefined,headless:true});
+ try{
+  const url=`http://127.0.0.1:${server.address().port}`,errors=[];
+  const context=await browser.newContext({viewport:{width:390,height:844}}),context2=await browser.newContext();
+  for(const c of [context,context2])await c.addInitScript(()=>{window.TP_EMULATORS=true;});
+  const a=await context.newPage(),b=await context2.newPage();for(const p of [a,b])p.on('pageerror',e=>errors.push(String(e)));
+  await a.goto(url);await a.waitForFunction(()=>!!window.PlannerSync);
+  await a.evaluate(data=>{for(const [k,v]of Object.entries(data))localStorage.setItem(k,JSON.stringify(v));},data);await a.reload();await a.waitForFunction(()=>!!window.PlannerSync);
+  const original=await a.evaluate(()=>JSON.parse(localStorage.getItem('tp_exercise_library_v1')));
+  for(const item of data.tp_exercise_library_v1)assert(original.some(v=>JSON.stringify(v)===JSON.stringify(item)),`lost exercise ${item.id}`);
+  assert.equal(await a.evaluate(()=>JSON.parse(localStorage.getItem('tp_branding')).logo),data.tp_branding.logo);
+  await a.evaluate(async email=>{const f=await import('./vendor/firebase.js');await f.createUserWithEmailAndPassword(f.getAuth(),email,'test-password-123');},ownerEmail);
+  await a.locator('#cloudBtn').click();await a.waitForFunction(()=>/Ready\./.test(document.querySelector('#syncStatus').textContent));
+  a.once('dialog',d=>d.accept());await a.locator('#syncUpload').click();await a.waitForFunction(()=>document.querySelector('#syncStatus').textContent.startsWith('Synced')&&!document.querySelector('#syncUpload').disabled);
+  console.log('PASS first authenticated upload retains existing exercises and image');
+  const ownerUid=await a.evaluate(async()=>{const f=await import('./vendor/firebase.js');return f.getAuth().currentUser.uid;});
+  await b.goto(url);await b.waitForFunction(()=>!!window.PlannerSync);await b.evaluate(async email=>{const f=await import('./vendor/firebase.js');await f.signInWithEmailAndPassword(f.getAuth(),email,'test-password-123');},ownerEmail);
+  await b.locator('#cloudBtn').click();await b.waitForFunction(()=>/Cloud data found/.test(document.querySelector('#syncStatus').textContent));
+  b.once('dialog',d=>d.accept());await b.locator('#syncDownload').click();await b.waitForFunction(()=>JSON.parse(localStorage.getItem('tp_templates')||'[]').length===2);await b.waitForFunction(()=>!!window.PlannerSync);
+  assert.equal(await b.evaluate(()=>JSON.parse(localStorage.getItem('tp_branding')).logo),data.tp_branding.logo);
+  assert.deepEqual(await b.evaluate(()=>JSON.parse(localStorage.getItem('tp_templates'))),data.tp_templates);
+  console.log('PASS second device downloads saved plans and exact logo');
+  await a.locator('#syncClose').click();await a.locator('#planName').fill('Device A updated plan');await a.locator('#cloudBtn').click();await a.locator('#syncCheck').click();await a.waitForFunction(()=>document.querySelector('#syncStatus').textContent.startsWith('Synced')&&!document.querySelector('#syncUpload').disabled);
+  await b.locator('#planName').fill('Device B offline edit');await b.locator('#cloudBtn').click();await b.locator('#syncCheck').click();await b.waitForFunction(()=>/Both this device and the cloud changed/.test(document.querySelector('#syncStatus').textContent));
+  assert.equal(await b.locator('#planName').inputValue(),'Device B offline edit');console.log('PASS conflicting device edits pause without replacement');
+  const cloudName=await a.evaluate(async()=>{const f=await import('./vendor/firebase.js'),{cloudStore}=await import('./firebase-store.mjs');const s=cloudStore(f.getFirestore(),f.getAuth().currentUser.uid);const h=await s.head();return (await s.read(h.version)).tp_draft.name;});assert.equal(cloudName,'Device A updated plan');
+  await b.locator('#localHistory').click();await b.waitForFunction(()=>document.querySelector('#syncHistory').textContent.includes('before-cloud-restore'));console.log('PASS pre-restore recovery backup exists');
+  await a.locator('#syncClose').click();await context.setOffline(true);await a.locator('#planName').fill('Offline saved edit');await context.setOffline(false);await a.goto(url);await a.waitForFunction(()=>!!window.PlannerSync);assert.equal(await a.locator('#planName').inputValue(),'Offline saved edit');console.log('PASS offline local edit survives reconnection');
+  await a.locator('#cloudBtn').click();await a.locator('#syncSignOut').click();await a.waitForFunction(()=>!document.querySelector('#syncSignIn').hidden);assert.equal(await a.locator('#planName').inputValue(),'Offline saved edit');
+  await a.evaluate(async email=>{const f=await import('./vendor/firebase.js');await f.createUserWithEmailAndPassword(f.getAuth(),email,'test-password-123');},otherEmail);await a.waitForFunction(()=>/Ready\./.test(document.querySelector('#syncStatus').textContent));assert.equal(await a.evaluate(()=>localStorage.getItem('tp_cloud_link_v1')),null);console.log('PASS sign-out preserves local data; another account does not automatically receive it');
+  const crossAccess=await a.evaluate(async uid=>{const f=await import('./vendor/firebase.js');try{await f.getDocFromServer(f.doc(f.getFirestore(),'trainingPlanner',uid,'state','head'));return 'unexpected read';}catch(e){return e.code;}},ownerUid);assert.equal(crossAccess,'permission-denied');console.log('PASS a different signed-in account cannot read the owner\'s cloud head');
+  await a.locator('#syncClose').click();await a.screenshot({path:process.env.TP_SCREENSHOT||'/tmp/training-planner-sync.png',fullPage:false});assert.deepEqual(errors,[]);console.log('PASS no browser errors');
+ }finally{await browser.close();await new Promise(r=>server.close(r));}
+})().catch(e=>{console.error(e);process.exit(1);});

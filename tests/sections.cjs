@@ -6,7 +6,7 @@ module.exports=async(page,out)=>{
  const intro='Introduction of New Techniques or Drills';
  const add=async(cat,name,minutes,notes='')=>{
    await section(cat).locator('[data-add-exercise]').click();const row=section(cat).locator('.row').last();
-   await row.locator('[data-k="0"]').fill(name);if(cat==='Warm-up')await section(cat).locator('[data-warmup-duration]').fill(String(minutes));else await row.locator('[data-k="1"]').fill(String(minutes));await row.locator('[data-k="2"]').evaluate((e,value)=>{e.value=value;e.dispatchEvent(new Event('input',{bubbles:true}));},notes);
+   await row.locator('[data-k="0"]').fill(name);if(cat==='Warm-up'){const controls=section(cat).locator('.warmup-controls');if(!await controls.evaluate(e=>e.open))await controls.locator('summary').click();await section(cat).locator('[data-warmup-duration]').fill(String(minutes));}else await row.locator('[data-k="1"]').fill(String(minutes));await row.locator('[data-k="2"]').evaluate((e,value)=>{e.value=value;e.dispatchEvent(new Event('input',{bubbles:true}));},notes);
  };
  const lib=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('tp_exercise_library_v1')));
  await add(intro,'Objetivos del día',3,'Explicar la meta de la sesión.');
@@ -18,7 +18,7 @@ module.exports=async(page,out)=>{
  assert.deepEqual(migration,{name:'Plan anterior',date:'2026-09-15',minutes:17,row:['Mi actividad',17,'Mis notas'],version:2});
  let data=await lib();const introCount=data.filter(x=>x.category===intro).length;assert(data.some(x=>x.category===intro&&x.name==='Objetivos del día'));assert(data.some(x=>x.category===intro&&x.name==='Normas de seguridad'));assert(data.some(x=>x.category==='Warm-up'&&x.name==='Movilidad articular'));
  // Typing must update one catalog entry, not create partial-name duplicates.
- const before=data.length;await section(intro).locator('[data-k="0"]').first().press('End');await section(intro).locator('[data-k="0"]').first().pressSequentially(' del equipo');assert.equal((await lib()).length,before);
+ const before=data.length;await section(intro).locator('[data-k="0"]').first().evaluate(e=>{e.focus();e.setSelectionRange(e.value.length,e.value.length);});await section(intro).locator('[data-k="0"]').first().pressSequentially(' del equipo');assert.equal((await lib()).length,before);
  await page.reload();assert.equal(await section(intro).locator('.row').count(),2);
  assert.equal(await section(intro).locator('[data-k="0"]').first().inputValue(),'Objetivos del día del equipo');
  await section(intro).locator('[data-remove]').first().click();assert.equal(await section(intro).locator('.row').count(),1);assert.equal((await lib()).filter(x=>x.category===intro).length,introCount);

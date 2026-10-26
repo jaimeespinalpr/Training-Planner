@@ -1,1 +1,25 @@
-{"name":"training-planner","private":true,"version":"1.1.0","scripts":{"test":"node tests/planner.cjs"},"dependencies":{"jspdf":"4.2.1","jspdf-autotable":"5.0.8"},"devDependencies":{"playwright":"1.56.1"}}
+{
+  "name": "training-planner",
+  "private": true,
+  "version": "1.1.0",
+  "scripts": {
+    "test": "node tests/planner.cjs",
+    "build:firebase": "node scripts/build-firebase.mjs",
+    "test:sync": "node tests/sync-core.mjs",
+    "test:sync-browser": "node tests/sync-browser.cjs"
+  },
+  "dependencies": {
+    "firebase": "12.19.0",
+    "jspdf": "4.2.1",
+    "jspdf-autotable": "5.0.8"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "playwright": "1.56.1"
+  },
+  "overrides": {
+    "@firebase/app": "0.16.4",
+    "@grpc/grpc-js": "1.13.6",
+    "dompurify": "3.4.17"
+  }
+}

@@ -9,6 +9,7 @@
 <body>
   <header class="topbar"><div class="brand"><img id="brandLogo" alt="Young Guns Nashville logo"><div><strong>Training Planner</strong><small id="brandClub">Young Guns Nashville</small></div></div><button id="saveBtn" class="button primary">Save plan</button></header>
   <main class="shell">
+    <section class="sync-bar" aria-label="Cloud sync"><span id="syncSummary" role="status">Saved on this device</span><button id="cloudBtn" class="button ghost" type="button">Account &amp; sync</button></section>
     <section class="hero"><div><p class="eyebrow">BUILD. ASSIGN. EXECUTE.</p><h1>Plan the work.<br><em>Win the match.</em></h1><p class="hero-copy">A focused training workspace for wrestling coaches, built for the phone first.</p></div></section>
     <nav class="track-tabs" aria-label="Training tracks"><button class="track active" data-track="wrestling">Wrestling</button><button class="track" data-track="lifting">Lifting</button><button class="track" data-track="mental">Mind &amp; Focus</button></nav>
     <section class="planner-card"><div class="section-head"><div><p class="eyebrow">SESSION BUILDER</p><h2 id="trackTitle">Wrestling practice</h2></div><div class="section-head-actions"><span id="savedState" class="status">Saved on this device</span><button id="newBtn" class="button new-plan-button" type="button">＋ Start a new plan</button></div></div>
@@ -65,11 +66,22 @@
     <p id="backupStatus" role="status" aria-live="polite"></p>
     <button id="closeBackup" class="button ghost" type="button">Close</button>
   </dialog>
+  <dialog id="syncDialog" aria-labelledby="syncTitle">
+    <h2 id="syncTitle">Account &amp; sync</h2><p id="syncAccount"></p>
+    <p id="syncStatus" role="status" aria-live="polite">Loading account settings…</p>
+    <div class="actions"><button id="syncSignIn" class="button secondary" type="button">Sign in with Google</button><button id="syncSignOut" class="button ghost" type="button" hidden>Sign out</button></div>
+    <p>Sign in with the same account on each device. Local edits save immediately; cloud sync runs when online. Your first upload uses this device’s existing plans, exercise libraries, and images.</p>
+    <div class="actions"><button id="syncUpload" class="button secondary" type="button" disabled>Start sync with this device</button><button id="syncDownload" class="button ghost" type="button" disabled>Load cloud copy</button><button id="syncCheck" class="button ghost" type="button" disabled>Check sync</button></div>
+    <p>When copies differ, choose which to use. Recovery backups and previous cloud versions keep the other copy available. Signing out keeps this device’s data; use a trusted device.</p>
+    <div class="actions"><button id="cloudHistory" class="button ghost" type="button" disabled>Cloud history</button><button id="localHistory" class="button ghost" type="button">Recovery backups</button></div>
+    <div id="syncHistory"></div><button id="syncClose" class="button ghost" type="button">Close</button>
+  </dialog>
   <nav id="mobileActionBar" class="mobile-action-bar" aria-label="Quick plan actions">
     <span id="mobileTimeSummary">90 min</span>
     <button id="mobileAddSection" type="button">＋ Add activity</button>
     <button id="mobileSavePlan" type="button">Save plan</button>
     <button id="mobileSavePdf" type="button">PDF</button>
   </nav>
-  <script src="vendor/young-guns-logo.js?v=1"></script><script src="vendor/jspdf.umd.min.js"></script><script src="vendor/jspdf.plugin.autotable.min.js"></script><script src="pdf-export.js?v=12"></script><script src="sections.js?v=18"></script><script src="app.js?v=17"></script>
+  <script src="vendor/young-guns-logo.js?v=1"></script><script src="vendor/jspdf.umd.min.js"></script><script src="vendor/jspdf.plugin.autotable.min.js"></script><script src="pdf-export.js?v=12"></script><script src="sections.js?v=18"></script><script src="app.js?v=18"></script>
+  <script src="firebase-config.public.js"></script><script type="module" src="firebase-sync.mjs"></script>
 </body></html>
