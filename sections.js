@@ -7,9 +7,9 @@
   const categoryForTrack=(name,track)=>track==='wrestling'&&englishCategory(name)==='Cool-down'?'Cool Down Closing and Visualization':englishCategory(name);
   const cooldownItems=["Light jog cool down","Slow walk around the mat","Deep breathing reset","Box breathing","Breathing while lying on the mat","Controlled inhale and exhale","Full body relaxation","Neck stretch","Shoulder stretch","Triceps stretch","Chest opener stretch","Wrist and forearm stretch","Hip flexor stretch","Hamstring stretch","Quad stretch","Groin stretch","Butterfly stretch","Pigeon stretch","Child’s pose","Cobra stretch","Downward dog stretch","Low lunge stretch","Seated forward fold","Figure-four stretch","Calf stretch","Ankle mobility reset","Partner assisted stretching","Foam rolling","Light band shoulder mobility","Post-practice gratitude circle","Team huddle closing","Coach message of the day","Athlete reflection","One thing learned today","One thing to improve tomorrow","Best effort moment","Mental reset after practice","Eyes-closed breathing","Lie on the mat and visualize a full match","Visualize the first whistle","Visualize staying calm under pressure","Visualize defending the first attack","Visualize scoring the first point","Visualize finishing a single leg","Visualize finishing a double leg","Visualize finishing a high crotch","Visualize escaping a bad position","Visualize winning a scramble","Visualize scoring near the edge","Visualize controlling center mat","Visualize recovering after giving up points","Visualize winning the last exchange","Visualize wrestling with confidence","Visualize hand fighting with pressure","Visualize hitting your best move","Visualize chaining attacks","Visualize defending and re-attacking","Visualize winning in overtime","Visualize hearing the final whistle","Visualize raising your hand after victory","Visualize winning a tournament","Visualize stepping onto the podium","Visualize receiving the gold medal","Visualize representing your team with pride","Visualize staying disciplined during hard matches","Visualize walking into the arena confident","Visualize warming up before finals","Visualize beating a tough opponent","Visualize bouncing back after a mistake","Visualize executing the game plan","Visualize your coach giving instructions","Visualize your teammates supporting you","Visualize shaking hands with respect","Visualize becoming a champion","Positive self-talk repetition","Repeat: I am ready","Repeat: I stay calm","Repeat: I control my position","Repeat: I can defend and score","Repeat: I finish strong","Repeat: I trust my training","Repeat: I wrestle with purpose","Repeat: I compete with courage","Repeat: I am prepared","Repeat: I belong here"];
   const warmupItems=[
-    ['Light jog',''],['High knees',''],['Butt kicks',''],['Side shuffles',''],['Carioca / grapevine',''],
-    ['Backpedal',''],['Progressive short sprints',''],['Jumping jacks',''],['Seal jacks',''],['Light shadow wrestling',''],
-    ['Circles around the mat',''],['Jog with direction changes',''],['Jog + sprawls on whistle',''],['Jog + shots on whistle',''],
+    ['High knees',''],['Butt kicks',''],['Side shuffles',''],['Carioca / grapevine',''],
+    ['Backpedal',''],['Progressive short sprints',''],['Seal jacks',''],
+    ['Jog with direction changes',''],['Jog + sprawls on whistle',''],['Jog + shots on whistle',''],
     ['Bear crawl',''],['Crab walk',''],['Duck walk',''],['Frog jumps',''],['Bunny hops',''],['Army crawl','']
   ];
   const coachWarmupItems=[['Agility and foot speed drills',''],['Core and coordination',''],['Front Roll',''],['Back Roll','']];
@@ -31,6 +31,9 @@
     const $=id=>document.getElementById(id);
     let library=read('tp_exercise_library_v1',[]);if(!Array.isArray(library))library=[];
     library=library.map(item=>({...item,category:categoryForTrack(item.category,item.track)}));
+    const removedWarmupNames=new Set(['circles around the mat','jumping jacks','light jog','light shadow wrestling']);
+    const keptLibrary=library.filter(item=>!(item.track==='wrestling'&&key(item.category)==='warm-up'&&removedWarmupNames.has(key(item.name))));
+    if(keptLibrary.length!==library.length){library=keptLibrary;persist('tp_exercise_library_v1',library);}
     const starterItems=[['Attendance Check','0',''],['Joke of the Day','0',''],['Goals','0','']];
     let seeded=false;
     for(const [name,minutes,notes] of starterItems){
