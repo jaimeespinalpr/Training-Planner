@@ -21,7 +21,7 @@
   if(settings.brandVersion!=='young-guns-nashville-2'){
     const categoryColors={...settings.categoryColors};
     for(const key of Object.keys(categoryColors))if(categoryColors[key]==='#0d6b4a'||categoryColors[key]==='#16845c')categoryColors[key]='#982b2e';
-    settings={...settings,club:'Young Guns Nashville',logo:window.YOUNG_GUNS_LOGO,categoryColors,brandVersion:'young-guns-nashville-2'};
+    settings={...settings,club:'Young Guns Nashville',logo:settings.logo||window.YOUNG_GUNS_LOGO,categoryColors,brandVersion:'young-guns-nashville-2'};
     if(settings.color==='#0d6b4a'||settings.color==='#16845c')settings.color='#982b2e';
     if(settings.textColor==='#25352e')settings.textColor='#1a1a1a';
     persist('tp_branding',settings);
