@@ -39,9 +39,9 @@
     persist('tp_exercise_library_v1',library);
     library=library.map(item=>item.track==='wrestling'&&key(item.category)==='introduction of new techniques or drills'&&key(item.name)==='inside tie setup'?{...item,name:'Inside and Outside Tie Setup'}:item);
     persist('tp_exercise_library_v1',library);
-    const removedTechniqueNames=new Set(['back trip setup','coach command technique reps']);
-    const keptTechniqueLibrary=library.filter(item=>!(item.track==='wrestling'&&key(item.category)==='introduction of new techniques or drills'&&removedTechniqueNames.has(key(item.name))));
-    if(keptTechniqueLibrary.length!==library.length){library=keptTechniqueLibrary;persist('tp_exercise_library_v1',library);}
+    const removedLegacyTechniqueNames=new Set(['back trip setup','coach command technique reps']);
+    const keptLegacyTechniqueLibrary=library.filter(item=>!(item.track==='wrestling'&&key(item.category)==='introduction of new techniques or drills'&&removedLegacyTechniqueNames.has(key(item.name))));
+    if(keptLegacyTechniqueLibrary.length!==library.length){library=keptLegacyTechniqueLibrary;persist('tp_exercise_library_v1',library);}
     const removedRequestedNames=new Set(['slow motion technique reps','step-slide in stance']);
     const keptRequestedLibrary=library.filter(item=>!(item.track==='wrestling'&&key(item.category)==='introduction of new techniques or drills'&&removedRequestedNames.has(key(item.name))));
     if(keptRequestedLibrary.length!==library.length){library=keptRequestedLibrary;persist('tp_exercise_library_v1',library);}
