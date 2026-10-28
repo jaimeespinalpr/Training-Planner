@@ -71,7 +71,7 @@
       }
       libraryUpdated=true;
     }
-    const libraryRenames={'Introduction of New Techniques or Drills':{'Inside tie setup':'Inside and Outside Tie Setup','Overhook entry':'Underhook and Overhook Entry'}};
+    const libraryRenames={'Introduction of New Techniques or Drills':{'inside tie setup':'Inside and Outside Tie Setup','overhook entry':'Underhook and Overhook Entry'}};
     for(const [category,renames] of Object.entries(libraryRenames)){
       for(const item of library){
         if(item.track!=='wrestling'||key(item.category)!==key(category))continue;
