@@ -146,14 +146,17 @@
         {content:category,styles:{fontStyle:'bold',textColor:accent,fontSize:fontSize+1,cellPadding:{top:7,right:8,bottom:5,left:8},lineWidth:{top:0.7,right:0.25,bottom:0.2,left:0.25}}},
         {content:`${total} min`,styles:{fontStyle:'bold',textColor:textColor,halign:'center',fontSize,cellPadding:{top:7,right:5,bottom:5,left:5},lineWidth:{top:0.7,right:0.25,bottom:0.2,left:0.25}}}
       ]);
-      rows.forEach(row=>{
+      const exerciseList=rows.map(row=>{
         const minutes=positiveMinutes(row[1]);
-        const label=`${String(row[0]||'Activity')}${rows.length>1&&category!=='Warm-up'?` · ${minutes} min`:''}${row[2]?`\n${row[2]}`:''}`;
-        body.push([
-          {content:label,styles:{cellPadding:{top:6,right:8,bottom:8,left:8},lineWidth:{top:0,right:0.25,bottom:0.25,left:0.25}}},
-          {content:'',styles:{cellPadding:5,lineWidth:{top:0,right:0.25,bottom:0.25,left:0.25}}}
-        ]);
-      });
+        const name=String(row[0]||'Activity').replace(/\s+/g,' ').trim();
+        const time=minutes>0?` (${Number.isInteger(minutes)?minutes:Number(minutes.toFixed(1))} min)`:'';
+        const notes=String(row[2]||'').replace(/\s+/g,' ').trim();
+        return `${name}${time}${notes?`: ${notes}`:''}`;
+      }).join(', ');
+      body.push([
+        {content:exerciseList,styles:{cellPadding:{top:6,right:8,bottom:7,left:8},lineWidth:{top:0,right:0.25,bottom:0.25,left:0.25}}},
+        {content:'',styles:{cellPadding:5,lineWidth:{top:0,right:0.25,bottom:0.25,left:0.25}}}
+      ]);
     }
 
     doc.autoTable({
