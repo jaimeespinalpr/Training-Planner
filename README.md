@@ -7,7 +7,7 @@ A mobile-first training planner for Young Guns Nashville coaches.
 ## Features
 
 - Plan wrestling, lifting, and mind and focus sessions. Each track has its own draft and exercise library.
-- Add sections and exercises with names, minutes, and coaching notes. Named exercises are saved automatically to the local library for reuse. Editing an exercise updates its library entry; previously saved plans keep their own copies.
+- Add sections and exercises with names, minutes, and coaching notes. Named exercises are saved to the local library. When signed in and online, custom exercises are copied to the shared catalog so all signed-in accounts can use them. Editing a shared exercise updates the shared entry; saved plans keep their own copies.
 - Customize the club or school, coach, season, footer, document color, and club logo (PNG, JPG, or WebP, up to 10 MB). Logos are converted to PNG at a maximum dimension of 640 pixels and saved on this device.
 - Save a plan locally, then download or share a PDF. The PDF groups activities by section, shows subtotals and planned duration, and continues long tables across pages. Empty sections are omitted. File sharing uses the device's native share menu when supported; otherwise the PDF downloads for manual attachment.
 - On phones, use the collapsible warm-up controls, section jump chips, sticky action bar, and all-category exercise search to move through a plan quickly. Draft status shows when it was last saved on this device; incomplete activities are flagged before PDF creation.
@@ -16,7 +16,7 @@ A mobile-first training planner for Young Guns Nashville coaches.
 
 ## Local data and older plans
 
-Plans, branding, and exercise libraries still save to browser localStorage immediately. **Account & sync** adds Google sign-in and private Firestore sync in the existing `wrestling-app-dev` project. On the first device, sign in and choose **Start sync with this device**. On another device, sign in to the same account and choose **Load cloud copy**. Nothing uploads merely because you sign in.
+Plans and branding still save to browser localStorage immediately. The shared exercise catalog is stored separately in Firestore and is available to signed-in accounts. **Account & sync** also provides private Firestore backups for each account in the existing `wrestling-app-dev` project. On the first device, sign in and choose **Start sync with this device**. On another device, sign in to the same account and choose **Load cloud copy**. Nothing uploads merely because you sign in. On sign-in, saved custom exercises in the local library are merged into the shared catalog; built-in starter exercises are excluded.
 
 After linking, edits upload after five seconds of inactivity while online. A cloud check runs every 30 seconds while the page is visible. Newer remote copies require **Load cloud copy**; simultaneous edits pause for an explicit choice. Transactions check the previous cloud revision before changing the current version, so a stale device cannot silently overwrite a newer version. Offline edits remain in localStorage and are retried when online. A second tab pauses syncing until reloaded.
 
