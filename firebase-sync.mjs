@@ -27,6 +27,9 @@ function cleanExercise(raw){
 function sharedPayload(item){
  return {id:item.id,track:item.track,category:item.category,name:item.name,minutes:item.minutes,notes:item.notes};
 }
+function sameExercise(a,b){
+ return a&&b&&a.track===b.track&&a.category===b.category&&a.name===b.name&&a.minutes===b.minutes&&a.notes===b.notes;
+}
 function sharedCache(){
  const value=readExerciseList('tp_shared_exercise_library_v1');
  return value.map(cleanExercise).filter(Boolean).map(item=>({...item,shared:true}));
@@ -73,9 +76,13 @@ async function syncSharedExerciseLibrary(){
   writeSharedCache([...remote.values()]);
 
   const pending=new Map();
-  for(const item of [...readExerciseList('tp_exercise_library_v1'),...sharedCache()]){
-   const valid=cleanExercise(item);
-   if(!valid||!item.pendingShared)continue;
+  const candidates=[...readExerciseList('tp_exercise_library_v1'),...sharedCache()];
+  for(const item of candidates){
+   const valid=cleanExercise(item);if(!valid)continue;
+   const cloud=remote.get(valid.id);
+   const isBuiltin=window.TP?.isBuiltInExercise?.(item)===true;
+   const needsUpload=Boolean(item.pendingShared)||(!isBuiltin&&(!cloud||(!sameExercise(valid,cloud)&&valid.updatedAt>cloud.updatedAt)));
+   if(!needsUpload)continue;
    const current=pending.get(valid.id);
    if(!current||valid.updatedAt>=current.updatedAt)pending.set(valid.id,valid);
   }
