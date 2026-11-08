@@ -137,5 +137,5 @@
     }catch(error){$('backupStatus').textContent=error.message||'Could not restore this backup. Your current data was not changed.';}
   };
   const sections=PlannerSections.attach({getState:()=>state,cache,render,toast,read,persist,savePlan:save,getSettings:()=>settings,updateProgress});
-  window.TP={save,tracks,validateBackup:readBackupData};sections.rememberAll();render();cache();
+  window.TP={save,tracks,validateBackup:readBackupData,isBuiltInExercise:sections.isBuiltInExercise};sections.rememberAll();render();cache();
 })();
