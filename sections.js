@@ -42,6 +42,17 @@
     const $=id=>document.getElementById(id);
     let library=read('tp_exercise_library_v1',[]);if(!Array.isArray(library))library=[];
     library=library.map(item=>({...item,category:categoryForTrack(item.category,item.track)}));
+    let sharedLibrary=read('tp_shared_exercise_library_v1',[]);if(!Array.isArray(sharedLibrary))sharedLibrary=[];
+    sharedLibrary=sharedLibrary.map(item=>({...item,category:categoryForTrack(item.category,item.track),shared:true}));
+    function combinedLibrary(){
+      const items=[],ids=new Set(),signatures=new Set();
+      for(const item of [...sharedLibrary,...library]){
+        const id=String(item.id||''),signature=[item.track,key(item.category),key(item.name)].join('|');
+        if((id&&ids.has(id))||signatures.has(signature))continue;
+        if(id)ids.add(id);signatures.add(signature);items.push(item);
+      }
+      return items;
+    }
     // Preserve saved exercise entries during restore and cloud migration.
     const starterItems=[
       ['Discuss the Tournament','0',''],
@@ -159,22 +170,35 @@
       const customContent=selected==='custom'?'<p>Choose from the complete Custom exercise list. Each exercise can be added individually.</p><button type="button" data-warmup-open-custom>Open Custom exercise list</button>':`<div class="warmup-items">${items.length?items.map(x=>`<div class="warmup-item"><span>${esc(x.name)}</span><button type="button" data-warmup-add="${esc(x.id||x.name)}">Add</button></div>`).join(''):'<p>No exercises in this warm-up group yet.</p>'}</div>`;
       return `<details class="warmup-controls"><summary>Warm-up setup · ${Math.max(0,Number(state.warmupMinutes)||0)} min</summary><div class="warmup-content"><label class="warmup-duration">Section time (min)<input type="number" min="0" max="1440" data-warmup-duration value="${Math.max(0,Number(state.warmupMinutes)||0)}"></label><label>Warm-up group<select data-warmup-mode>${options.map(([value,label])=>`<option value="${esc(value)}"${value===selected?' selected':''}>${esc(label)}</option>`).join('')}</select></label>${customContent}<div class="section-actions"><button type="button" data-warmup-add-all>${action}</button><button type="button" data-warmup-save>Save</button><button type="button" data-warmup-save-template>Save as template</button></div></div></details>`;
     }
-    function remember(row){
-      const name=row[0].trim();if(!name)return;
-      const state=getState(),same=library.find(x=>x.track===state.track&&key(x.category)===key(row[3])&&key(x.name)===key(name));
-      const existing=library.find(x=>x.id===row[4]&&x.track===state.track&&x.category===row[3]);
+    function remember(row,publish=true){
+      const name=String(row[0]||'').trim();if(!name)return;
+      const state=getState(),all=combinedLibrary();
+      const same=all.find(x=>x.track===state.track&&key(x.category)===key(row[3])&&key(x.name)===key(name));
+      const existing=all.find(x=>x.id===row[4]&&x.track===state.track&&key(x.category)===key(row[3]));
       const id=same?.id||existing?.id||crypto.randomUUID();
-      // Update one stable entry while typing; never store every partial keystroke.
-      library=library.filter(x=>x.id!==id&&(!existing||x.id!==existing.id));
-      library.push({id,track:state.track,category:row[3],name,minutes:row[1],notes:row[2]});
-      if(persist('tp_exercise_library_v1',library))row[4]=id;
+      const isShared=Boolean(sharedLibrary.some(x=>x.id===id)||same?.shared||existing?.shared);
+      const item={id,track:state.track,category:row[3],name,minutes:row[1],notes:row[2],updatedAt:Date.now(),pendingShared:Boolean(publish)};
+      if(isShared){
+        sharedLibrary=[...sharedLibrary.filter(x=>x.id!==id),{...item,shared:true}];
+        if(persist('tp_shared_exercise_library_v1',sharedLibrary)){
+          row[4]=id;
+          if(publish)window.dispatchEvent(new CustomEvent('tp-exercise-library-changed',{detail:{exercise:item}}));
+        }
+      }else{
+        library=library.filter(x=>x.id!==id&&(!existing||x.id!==existing.id));
+        library.push(item);
+        if(persist('tp_exercise_library_v1',library)){
+          row[4]=id;
+          if(publish)window.dispatchEvent(new CustomEvent('tp-exercise-library-changed',{detail:{exercise:item}}));
+        }
+      }
     }
-    function rememberAll(){getState().rows.filter(r=>!r[4]).forEach(remember);}
+    function rememberAll(){getState().rows.filter(r=>!r[4]).forEach(row=>remember(row,false));}
     function renderRows(){
       const state=getState();
       $('rows').innerHTML=state.categories.map((category,c)=>{
         const items=state.rows.map((r,i)=>({r,i})).filter(x=>x.r[3]===category);const isWarmup=category==='Warm-up';
-        const count=library.filter(x=>x.track===state.track&&key(x.category)===key(category)).length;
+        const count=combinedLibrary().filter(x=>x.track===state.track&&key(x.category)===key(category)).length;
         const color=getSettings?.().categoryColors?.[category]||getSettings?.().color||'#982b2e';
         const isEmpty=!items.length&&!isWarmup;
         const sectionId=`plan-section-${c}`;
@@ -209,15 +233,20 @@
     $('cancelSection').onclick=()=>$('sectionDialog').close();
     let activeLibraryCategory='__all__';
     function openLibrary(category){
-      rememberAll();cache();activeLibraryCategory=category||'__all__';
+      rememberAll();cache();window.dispatchEvent(new Event('tp-exercise-library-opened'));activeLibraryCategory=category||'__all__';
       $('libraryTitle').textContent=category?`Exercise library · ${category}`:'Exercise library · all categories';
       $('libraryHelp').textContent=category?`Showing exercises from ${category}. Items added from this view stay in that section.`:'Search every category; each result shows the section it belongs to.';
       $('librarySearch').value='';renderLibrary();$('libraryDialog').showModal();
     }
-    function renderLibrary(){const track=getState().track,category=activeLibraryCategory,search=key($('librarySearch').value);const items=library.filter(x=>x.track===track&&(category==='__all__'||key(x.category)===key(category))&&key(x.name+' '+x.notes+' '+x.category).includes(search)).sort((a,b)=>a.category.localeCompare(b.category)||a.name.localeCompare(b.name));
-      $('libraryItems').innerHTML=items.length?items.map(x=>`<article class="library-item"><div class="library-item-main"><strong>${esc(x.name)}</strong><small>${esc(x.category)} · ${x.minutes} min</small></div><div class="library-item-actions"><button type="button" data-insert-exercise="${esc(x.id)}" aria-label="Add ${esc(x.name)} to the plan" title="Add to plan">Add</button><button type="button" class="library-remove" data-forget-exercise="${esc(x.id)}" aria-label="Remove ${esc(x.name)} from library" title="Remove from library">×</button></div>${x.notes?.trim()?'<details class="library-notes"><summary>Details</summary><p>'+esc(x.notes)+'</p></details>':''}</article>`).join(''):'<p>No exercises match this search. Try a different term or category.</p>';}
+    function renderLibrary(){const track=getState().track,category=activeLibraryCategory,search=key($('librarySearch').value);const items=combinedLibrary().filter(x=>x.track===track&&(category==='__all__'||key(x.category)===key(category))&&key(x.name+' '+x.notes+' '+x.category).includes(search)).sort((a,b)=>a.category.localeCompare(b.category)||a.name.localeCompare(b.name));
+      $('libraryItems').innerHTML=items.length?items.map(x=>`<article class="library-item"><div class="library-item-main"><strong>${esc(x.name)}</strong><small>${esc(x.category)} · ${x.minutes} min${x.shared?' · Shared':''}</small></div><div class="library-item-actions"><button type="button" data-insert-exercise="${esc(x.id)}" aria-label="Add ${esc(x.name)} to the plan" title="Add to plan">Add</button>${x.shared?'':`<button type="button" class="library-remove" data-forget-exercise="${esc(x.id)}" aria-label="Remove ${esc(x.name)} from library" title="Remove from library">×</button>`}</div>${x.notes?.trim()?'<details class="library-notes"><summary>Details</summary><p>'+esc(x.notes)+'</p></details>':''}</article>`).join(''):'<p>No exercises match this search. Try a different term or category.</p>';}
+    window.addEventListener('tp-shared-exercises-changed',()=>{
+      const next=read('tp_shared_exercise_library_v1',[]);
+      sharedLibrary=Array.isArray(next)?next.map(item=>({...item,category:categoryForTrack(item.category,item.track),shared:true})):[];
+      renderRows();if($('libraryDialog')?.open)renderLibrary();
+    });
     $('librarySearch').oninput=renderLibrary;$('closeLibrary').onclick=()=>$('libraryDialog').close();
-    $('libraryItems').onclick=e=>{const b=e.target.closest('button');if(!b)return;const id=b.dataset.insertExercise||b.dataset.forgetExercise;const item=library.find(x=>x.id===id);if(!item)return;
+    $('libraryItems').onclick=e=>{const b=e.target.closest('button');if(!b)return;const id=b.dataset.insertExercise||b.dataset.forgetExercise;const item=combinedLibrary().find(x=>x.id===id);if(!item)return;
       if(b.dataset.insertExercise){const state=getState();if(!state.categories.includes(item.category))state.categories.push(item.category);state.rows.push([item.name,item.minutes,item.notes,item.category,item.id]);cache();render();toast('Exercise added to '+item.category);}
       else if(confirm('Remove this exercise from the library? It will remain in saved plans.')){library=library.filter(x=>x.id!==id);persist('tp_exercise_library_v1',library);renderLibrary();render();}
     };
