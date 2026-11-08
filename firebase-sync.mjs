@@ -1,13 +1,110 @@
 import {initializeApp} from './vendor/firebase.js';
 import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut,connectAuthEmulator} from './vendor/firebase.js';
-import {getFirestore,connectFirestoreEmulator} from './vendor/firebase.js';
+import {getFirestore,connectFirestoreEmulator,collection,doc,getDocsFromServer,writeBatch,serverTimestamp} from './vendor/firebase.js';
 import {KEYS,readLocal,canonical,digest,replaceLocal,actionFor} from './sync-core.mjs';
 import {backupLocal,listBackups,download} from './sync-backups.mjs';
 import {cloudStore} from './firebase-store.mjs';
 const $=id=>document.getElementById(id),META='tp_cloud_link_v1';
-let user=null,store=null,busy=false,paused=false,stale=false,head=null,base=null,timer,epoch=0;
+let user=null,store=null,db=null,busy=false,paused=false,stale=false,head=null,base=null,timer,epoch=0,sharedBusy=false,sharedQueued=false,sharedSyncTimer=null;
 const status=text=>{$('syncStatus').textContent=text;$('syncSummary').textContent=text;};
 const local=()=>{const data=readLocal(localStorage);TP.validateBackup(data);return data;};
+const SHARED_EXERCISES_PATH=['shared_app','training_planner_exercises','items'];
+const exerciseTracks=new Set(['wrestling','lifting','mental']);
+function sharedLibraryStatus(message){
+ const el=$('sharedLibraryStatus');if(el)el.textContent=message;
+}
+function readExerciseList(key){
+ try{const value=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(value)?value:[];}catch{return [];}
+}
+function cleanExercise(raw){
+ if(!raw||typeof raw!=='object')return null;
+ const id=String(raw.id||'').trim(),track=String(raw.track||'').trim();
+ const category=String(raw.category||'').trim(),name=String(raw.name||'').trim();
+ const minutes=Number(raw.minutes),notes=String(raw.notes||'');
+ if(!/^[a-zA-Z0-9_-]{1,100}$/.test(id)||!exerciseTracks.has(track)||!category||category.length>140||!name||name.length>180||!Number.isFinite(minutes)||minutes<0||minutes>1440||notes.length>5000)return null;
+ return {id,track,category,name,minutes,notes,updatedAt:Number(raw.updatedAt)||0,pendingShared:Boolean(raw.pendingShared),shared:Boolean(raw.shared)};
+}
+function sharedPayload(item){
+ return {id:item.id,track:item.track,category:item.category,name:item.name,minutes:item.minutes,notes:item.notes};
+}
+function sharedCache(){
+ const value=readExerciseList('tp_shared_exercise_library_v1');
+ return value.map(cleanExercise).filter(Boolean).map(item=>({...item,shared:true}));
+}
+function writeSharedCache(items){
+ const key='tp_shared_exercise_library_v1',next=JSON.stringify(items);
+ if(localStorage.getItem(key)!==next){
+  localStorage.setItem(key,next);
+  window.dispatchEvent(new Event('tp-shared-exercises-changed'));
+ }
+}
+function remoteTimestamp(value){
+ if(value&&typeof value.toMillis==='function')return value.toMillis();
+ if(value instanceof Date)return value.getTime();
+ return Number(value)||0;
+}
+function clearPendingExercises(ids){
+ for(const key of ['tp_exercise_library_v1','tp_shared_exercise_library_v1']){
+  const items=readExerciseList(key);
+  let changed=false;
+  const next=items.map(raw=>{
+   if(!ids.has(String(raw?.id||''))||!raw?.pendingShared)return raw;
+   changed=true;return {...raw,pendingShared:false,shared:true,updatedAt:Date.now()};
+  });
+  if(changed){
+   localStorage.setItem(key,JSON.stringify(next));
+   if(key==='tp_shared_exercise_library_v1')window.dispatchEvent(new Event('tp-shared-exercises-changed'));
+  }
+ }
+}
+async function syncSharedExerciseLibrary(){
+ if(!user||!db)return;
+ if(sharedBusy){sharedQueued=true;return;}
+ sharedBusy=true;
+ try{
+  const snapshot=await getDocsFromServer(collection(db,...SHARED_EXERCISES_PATH));
+  const remote=new Map();
+  snapshot.docs.forEach(document=>{
+   const item=cleanExercise({...document.data(),id:document.id});
+   if(item)remote.set(item.id,{...item,shared:true,pendingShared:false,updatedAt:remoteTimestamp(document.data().updatedAt)});
+  });
+  const previous=sharedCache();
+  for(const item of previous)if(item.pendingShared)remote.set(item.id,item);
+  writeSharedCache([...remote.values()]);
+
+  const pending=new Map();
+  for(const item of [...readExerciseList('tp_exercise_library_v1'),...sharedCache()]){
+   const valid=cleanExercise(item);
+   if(!valid||!item.pendingShared)continue;
+   const current=pending.get(valid.id);
+   if(!current||valid.updatedAt>=current.updatedAt)pending.set(valid.id,valid);
+  }
+  const entries=[...pending.values()];
+  for(let offset=0;offset<entries.length;offset+=400){
+   const batch=writeBatch(db);
+   entries.slice(offset,offset+400).forEach(item=>{
+    batch.set(doc(db,...SHARED_EXERCISES_PATH,item.id),{...sharedPayload(item),updatedAt:serverTimestamp()});
+   });
+   await batch.commit();
+  }
+  if(entries.length){
+   const merged=new Map(sharedCache().map(item=>[item.id,item]));
+   for(const item of entries)merged.set(item.id,{...item,pendingShared:false,shared:true,updatedAt:Date.now()});
+   writeSharedCache([...merged.values()]);
+   clearPendingExercises(new Set(entries.map(item=>item.id)));
+  }
+  sharedLibraryStatus('Shared exercise library is up to date for signed-in accounts.');
+ }catch(error){
+  console.warn('Shared exercise library sync failed',error);
+  sharedLibraryStatus(error?.code==='permission-denied'
+   ?'Could not access the shared library. Your exercises are still saved on this device.'
+   :'Shared library is temporarily unavailable. Your exercises are still saved on this device.');
+ }finally{
+  sharedBusy=false;
+  if(sharedQueued){sharedQueued=false;setTimeout(syncSharedExerciseLibrary,0);}
+ }
+}
+
 function readBase(){try{const value=JSON.parse(localStorage.getItem(META));return value?.uid===user?.uid?value:null;}catch{return null;}}
 function setBase(value){base={...value,uid:user.uid};localStorage.setItem(META,JSON.stringify(base));}
 function controls(){
@@ -87,18 +184,21 @@ $('localHistory').onclick=async()=>{
  if(!backups.length)list.textContent='Recovery backups appear before cloud uploads and restores.';
  }catch(e){failure(e);}
 };
-window.PlannerSync={backupLocal:reason=>backupLocal(local(),reason),pause:()=>{paused=true;clearTimeout(timer);}};
+window.PlannerSync={backupLocal:reason=>backupLocal(local(),reason),pause:()=>{paused=true;clearTimeout(timer);},syncSharedExercises:syncSharedExerciseLibrary};
 try{
  if(window.FIREBASE_CONFIG?.projectId!=='wrestling-app-dev')throw Error('Firebase configuration is missing.');
  const testing=['localhost','127.0.0.1'].includes(location.hostname)&&window.TP_EMULATORS;
- const app=initializeApp(testing?{...window.FIREBASE_CONFIG,projectId:'demo-training-planner',apiKey:'demo-key'}:window.FIREBASE_CONFIG),auth=getAuth(app),db=getFirestore(app);
+ const app=initializeApp(testing?{...window.FIREBASE_CONFIG,projectId:'demo-training-planner',apiKey:'demo-key'}:window.FIREBASE_CONFIG),auth=getAuth(app);db=getFirestore(app);
  // Emulator configuration can only be enabled on loopback hosts.
  if(testing){connectAuthEmulator(auth,'http://127.0.0.1:9098',{disableWarnings:true});connectFirestoreEmulator(db,'127.0.0.1',8088);}
  $('syncSignIn').onclick=()=>locked(async()=>{const provider=new GoogleAuthProvider();provider.setCustomParameters({prompt:'select_account'});await signInWithPopup(auth,provider);setTimeout(check,150);});
  $('syncSignOut').onclick=()=>locked(async()=>{paused=true;clearTimeout(timer);localStorage.removeItem(META);await signOut(auth);});
- onAuthStateChanged(auth,current=>{epoch++;user=current;store=user?cloudStore(db,user.uid):null;base=readBase();paused=false;head=null;$('syncHistory').replaceChildren();controls();status(user?'Checking cloud data…':'Saved on this device · sign in to enable cloud sync');if(user)setTimeout(check,100);});
+ onAuthStateChanged(auth,current=>{epoch++;user=current;store=user?cloudStore(db,user.uid):null;base=readBase();paused=false;head=null;$('syncHistory').replaceChildren();controls();status(user?'Checking cloud data…':'Saved on this device · sign in to enable cloud sync');sharedLibraryStatus(user?'Loading the shared exercise library…':'Sign in with Google to load and share exercises across accounts.');if(user){setTimeout(check,100);setTimeout(syncSharedExerciseLibrary,250);}});
  window.addEventListener('tp-data-changed',()=>{clearTimeout(timer);timer=setTimeout(check,5000);});
- window.addEventListener('online',check);
- window.addEventListener('storage',e=>{if(KEYS.includes(e.key)||e.key===META){paused=true;stale=true;epoch++;controls();status('Planner data changed in another tab. Reload this tab before syncing.');}});
- setInterval(()=>{if(!document.hidden)check();},30000);
+ window.addEventListener('tp-exercise-library-changed',()=>{clearTimeout(sharedSyncTimer);sharedSyncTimer=setTimeout(syncSharedExerciseLibrary,700);});
+ window.addEventListener('tp-exercise-library-opened',syncSharedExerciseLibrary);
+ window.addEventListener('focus',()=>{if(!document.hidden)syncSharedExerciseLibrary();});
+ window.addEventListener('online',()=>{check();syncSharedExerciseLibrary();});
+ window.addEventListener('storage',e=>{if(KEYS.includes(e.key)||e.key===META){paused=true;stale=true;epoch++;controls();status('Planner data changed in another tab. Reload this tab before syncing.');}if(e.key==='tp_shared_exercise_library_v1')window.dispatchEvent(new Event('tp-shared-exercises-changed'));});
+ setInterval(()=>{if(!document.hidden){check();if($('libraryDialog')?.open)syncSharedExerciseLibrary();}},30000);
 }catch(e){failure(e);$('syncSignIn').disabled=true;}
