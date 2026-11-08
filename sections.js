@@ -60,6 +60,26 @@
       ['Discuss Upcoming Vacations','0',''],
       ['Open Floor: Does Anyone Have Anything to Share?','0','']
     ];
+    function isBuiltInExercise(item){
+      if(!item||typeof item!=='object')return false;
+      const track=String(item.track||''),category=key(item.category),name=key(item.name);
+      const contains=(items)=>items.some(entry=>key(Array.isArray(entry)?entry[0]:entry)===name);
+      if(track==='wrestling'){
+        if(category===key('Roll Call and Announcements')&&contains(starterItems))return true;
+        if(category===key('Warm-up')&&contains([...warmupItems,...coachWarmupItems]))return true;
+        if(category===key('Strength and Skill Based Activities')&&contains(strengthItems))return true;
+        if(category===key('Introduction of New Techniques or Drills')&&contains(techniqueItems))return true;
+        if(category===key('Live Wrestling (High Pace Drills)')&&contains(liveItems))return true;
+        if(category===key('Cool Down Closing and Visualization')&&contains(cooldownItems))return true;
+        if(category===key('Announcements')&&contains(announcementItems))return true;
+      }
+      const samplePlans={
+        wrestling:['Warm-up + movement','Technique: single-leg chain','Live goes: score first','Cool down + review'],
+        lifting:['Dynamic warm-up','Lower-body strength','Power + med ball','Mobility / recovery'],
+        mental:['Breathing reset','Visualization: first score','Decision game','Journal + cue words']
+      };
+      return contains(samplePlans[track]||[]);
+    }
     const removedLibraryItems={
       'Roll Call and Announcements':['Attendance Check','Joke of the Day','Goals'],
       'Warm-up':['Circles around the mat','Jumping jacks','Light jog','Light shadow wrestling'],
@@ -251,7 +271,7 @@
       else if(confirm('Remove this exercise from the library? It will remain in saved plans.')){library=library.filter(x=>x.id!==id);persist('tp_exercise_library_v1',library);renderLibrary();render();}
     };
     $('openLibrary').onclick=()=>openLibrary();
-    return {renderRows,remember,rememberAll,updateSummary};
+    return {renderRows,remember,rememberAll,updateSummary,isBuiltInExercise};
   }
   window.PlannerSections={normalize,attach};
 })();
